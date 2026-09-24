@@ -7,18 +7,28 @@ each call can be viewed on its own, and each call has a SIP ladder diagram.
 It is modelled on the AudioCodes Syslog Viewer, which does the same for AudioCodes gateways and
 SBCs.
 
-> **Status: planning.** Nothing works yet. See [docs/PLAN.md](docs/PLAN.md) for the roadmap.
+> **Status: in progress.** The live view, the call list and the ladder diagram work. Opening
+> saved sessions and handling several CUBEs at once are still to come. See
+> [docs/PLAN.md](docs/PLAN.md) for the roadmap.
 
-## Planned features
+```
+go build ./cmd/cube-logger
+./cube-logger live          # listens on :5514/udp, opens on http://127.0.0.1:8514
+```
 
-- Receives syslog and debug output from one or more CUBEs over UDP, live.
+## Features
+
+- Receives syslog and debug output from a CUBE over UDP, live. **Working.**
 - Log table with colors by severity and type, text and severity filters, and pause and
-  auto-scroll. It stays fast with 100k+ lines.
-- Call list: pick a call to see only its lines.
-- SIP ladder diagram per call.
-- Flags lost syslog packets, using IOS sequence numbers.
-- Opens saved logs, including `show logging` output.
-- Runs locally. Nothing leaves your machine.
+  auto-scroll. It stays fast with 100k+ lines. **Working.**
+- Call list with time, from, to, duration and result; pick a call to see only its lines.
+  **Working.**
+- SIP ladder diagram per call, one column for the CUBE and one per peer, and the call's
+  messages can be copied or downloaded as text. **Working.**
+- Flags syslog output that was lost or rate-limited, using IOS sequence numbers. **Working.**
+- Opens saved logs, including `show logging` output. *Offline only so far:*
+  `cube-logger parse <file>`.
+- Runs locally. Nothing leaves your machine. **Working.**
 
 ## Sending CUBE logs to cube-logger
 

@@ -128,7 +128,7 @@ func parseCmd(args []string) error {
 type output struct {
 	*parse.Result
 	Calls      []*correlate.Call `json:"calls"`
-	Unattached []int             `json:"unattached,omitempty"`
+	Unattached []uint64          `json:"unattached,omitempty"`
 }
 
 func printSummary(name string, res *parse.Result, grouped *correlate.Result) {

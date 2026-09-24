@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/phuongnz/cube-logger/internal/calls"
 	"github.com/phuongnz/cube-logger/internal/listen"
 	"github.com/phuongnz/cube-logger/internal/live"
 	"github.com/phuongnz/cube-logger/internal/store"
@@ -65,6 +66,9 @@ type Server struct {
 	// Listener is consulted for socket statistics, and may be nil for the
 	// same reason.
 	Listener *listen.Listener
+	// Calls is the live call index. It may be nil, in which case the call
+	// list is simply absent: parsing records is useful on its own.
+	Calls *calls.Index
 
 	// Title is shown in the browser tab and the header, so an engineer with
 	// two sessions open can tell them apart.
@@ -139,6 +143,9 @@ func (s *Server) handler() http.Handler {
 	mux.HandleFunc("/ws", s.serveWS)
 	mux.HandleFunc("/api/stats", s.serveStats)
 	mux.HandleFunc("/api/records", s.serveRecords)
+	mux.HandleFunc("/api/calls", s.serveCalls)
+	mux.HandleFunc("/api/calls/{id}", s.serveCall)
+	mux.HandleFunc("/api/calls/{id}/text", s.serveCallText)
 	return localOnly(mux)
 }
 
@@ -177,6 +184,7 @@ type status struct {
 	Store    store.Stats       `json:"store"`
 	Sources  []live.SourceStat `json:"sources"`
 	Listener *listen.Stats     `json:"listener,omitempty"`
+	Calls    *calls.Stats      `json:"calls,omitempty"`
 	Listen   string            `json:"listen,omitempty"`
 	Allow    string            `json:"allow,omitempty"`
 }
@@ -188,6 +196,10 @@ func (s *Server) status() status {
 	}
 	if st.Sources == nil {
 		st.Sources = []live.SourceStat{}
+	}
+	if s.Calls != nil {
+		cs := s.Calls.Stats()
+		st.Calls = &cs
 	}
 	if s.Listener != nil {
 		ls := s.Listener.Stats()
@@ -286,7 +298,33 @@ type (
 		Missed uint64 `json:"missed"`
 		From   uint64 `json:"from"`
 	}
+	// callsMsg carries the call list as a delta: only the calls whose
+	// revision moved, plus the IDs that stopped being calls of their own.
+	callsMsg struct {
+		Type string `json:"type"`
+		calls.Update
+	}
+	// callMsg is the one call the browser says it is looking at, with its
+	// record references and its ladder. It is re-sent whenever that call
+	// changes, which is what keeps a ladder growing while the call is up.
+	callMsg struct {
+		Type string        `json:"type"`
+		Call *calls.Detail `json:"call"`
+		// Gone is set when the selected call no longer exists: evicted, or
+		// the session was cleared. The browser drops its filter rather than
+		// showing an empty table it cannot explain.
+		Gone string `json:"gone,omitempty"`
+	}
 )
+
+// clientMsg is the only thing a browser sends us. The rest of the socket is
+// one-way.
+type clientMsg struct {
+	Type string `json:"type"`
+	// Call is the call the browser is showing, for a "select" message. Empty
+	// means it closed the call and wants nothing pushed.
+	Call string `json:"call"`
+}
 
 func (s *Server) serveWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := ws.Accept(w, r)
@@ -326,17 +364,34 @@ func (s *Server) serveWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// The reader exists to answer pings and to notice the tab closing. It owns
-	// the read side; the write side is this goroutine plus its mutex.
+	// The reader answers pings, notices the tab closing, and carries the one
+	// thing a browser tells us: which call it is looking at. It owns the read
+	// side; the write side is this goroutine plus its mutex.
+	//
+	// selected is buffered and dropped-on-full on purpose: a browser clicking
+	// down a call list faster than the push loop turns over should end up on
+	// the call it stopped at, not queue every call it passed through.
 	gone := make(chan struct{})
+	selected := make(chan string, 1)
 	go func() {
 		defer close(gone)
 		_ = conn.SetReadDeadline(time.Now().Add(pongWait))
 		for {
-			if _, err := conn.ReadMessage(); err != nil {
+			m, err := conn.ReadMessage()
+			if err != nil {
 				return
 			}
 			_ = conn.SetReadDeadline(time.Now().Add(pongWait))
+			var cm clientMsg
+			if m.Binary || json.Unmarshal(m.Data, &cm) != nil || cm.Type != "select" {
+				continue
+			}
+			select {
+			case selected <- cm.Call:
+			default:
+				<-selected
+				selected <- cm.Call
+			}
 		}
 	}()
 
@@ -347,11 +402,32 @@ func (s *Server) serveWS(w http.ResponseWriter, r *http.Request) {
 	ping := time.NewTicker(pingInterval)
 	defer ping.Stop()
 
+	// callsRev is how far the browser's call list has been brought; watching
+	// is the call it has open, if any.
+	var callsRev uint64
+	var watching string
+	if s.Calls != nil {
+		u, err := s.pushCalls(conn, 0)
+		if err != nil {
+			return
+		}
+		callsRev = u.Rev
+	}
+
 	var batch []store.Entry
 	for {
 		select {
 		case <-gone:
 			return
+
+		case id := <-selected:
+			watching = id
+			if watching != "" {
+				var err error
+				if watching, err = s.pushCall(conn, watching); err != nil {
+					return
+				}
+			}
 
 		case entries, ok := <-sub.C:
 			if !ok {
@@ -391,6 +467,22 @@ func (s *Server) serveWS(w http.ResponseWriter, r *http.Request) {
 			if err := send(conn, statsMsg{Type: "stats", Status: s.status()}); err != nil {
 				return
 			}
+			if s.Calls == nil {
+				continue
+			}
+			u, err := s.pushCalls(conn, callsRev)
+			if err != nil {
+				return
+			}
+			callsRev = u.Rev
+			// The open call is re-sent only when it actually changed, so a
+			// ladder for a call that ended an hour ago is not rebuilt every
+			// second for as long as somebody leaves the tab open.
+			if watching != "" && changed(u, watching) {
+				if watching, err = s.pushCall(conn, watching); err != nil {
+					return
+				}
+			}
 
 		case <-ping.C:
 			if err := conn.Ping(); err != nil {
@@ -398,6 +490,53 @@ func (s *Server) serveWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+// pushCalls sends what changed in the call list since rev and returns the new
+// revision. It stays quiet when nothing changed: the call list is beside the
+// log table, and a frame a second that redraws it for no reason is a frame a
+// second the browser spends not drawing records.
+func (s *Server) pushCalls(c *ws.Conn, rev uint64) (calls.Update, error) {
+	u := s.Calls.Since(rev)
+	if rev != 0 && len(u.Calls) == 0 && len(u.Removed) == 0 && !u.Reset {
+		return u, nil
+	}
+	if rev == 0 {
+		// A fresh list, not a delta: say so, so a browser reconnecting after a
+		// dropped socket replaces its rows instead of merging into stale ones.
+		u.Reset = true
+	}
+	return u, send(c, callsMsg{Type: "calls", Update: u})
+}
+
+// pushCall sends the call the browser has open and returns the ID it should
+// now be watching — which is not always the ID it asked for, since two legs
+// that turn out to be one call are merged under one of the two IDs.
+func (s *Server) pushCall(c *ws.Conn, id string) (string, error) {
+	d, ok := s.Calls.Get(id, s.Lookup)
+	if !ok {
+		return "", send(c, callMsg{Type: "call", Gone: id})
+	}
+	return d.ID, send(c, callMsg{Type: "call", Call: d})
+}
+
+// changed reports whether one call moved in this update, so that an idle call
+// costs a scan of what changed rather than a rebuilt ladder every second.
+func changed(u calls.Update, id string) bool {
+	if u.Reset {
+		return true
+	}
+	for _, c := range u.Calls {
+		if c.ID == id {
+			return true
+		}
+	}
+	for _, gone := range u.Removed {
+		if gone == id {
+			return true
+		}
+	}
+	return false
 }
 
 // after drops entries the browser already has.
@@ -430,4 +569,11 @@ func send(c *ws.Conn, v any) error {
 		return err
 	}
 	return c.WriteText(b)
+}
+
+// parseUint is strconv.ParseUint with the error dropped: a malformed query
+// parameter means "from the beginning", which is the safe answer.
+func parseUint(s string) (uint64, bool) {
+	n, err := strconv.ParseUint(s, 10, 64)
+	return n, err == nil
 }

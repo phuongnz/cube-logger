@@ -8,9 +8,11 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/phuongnz/cube-logger/internal/calls"
 	"github.com/phuongnz/cube-logger/internal/listen"
 	"github.com/phuongnz/cube-logger/internal/live"
 	"github.com/phuongnz/cube-logger/internal/store"
@@ -32,6 +34,7 @@ func liveCmd(args []string) error {
 	allowSpec := fs.String("allow", "",
 		"comma-separated IPs or CIDRs allowed to send (default: anything that reaches the socket)")
 	capacity := fs.Int("buffer", store.DefaultCap, "how many records to keep in memory")
+	maxCalls := fs.Int("calls", calls.DefaultMax, "how many calls to keep in the call list")
 	title := fs.String("title", "", "name for this session, shown in the browser tab")
 	year := fs.Int("year", 0, "calendar year (IOS does not log one; 0 means this year)")
 	quiet := fs.Bool("quiet", false, "do not print a line per source as it first appears")
@@ -55,7 +58,9 @@ func liveCmd(args []string) error {
 	re := live.New()
 	re.Year = *year
 	st := store.New(*capacity)
-	srv := &web.Server{Store: st, Live: re, Listener: ln, Title: *title}
+	ix := calls.New(*maxCalls)
+	add := &feeder{st: st, ix: ix}
+	srv := &web.Server{Store: st, Live: re, Listener: ln, Calls: ix, Title: *title}
 	if err := web.Open(*httpAddr, srv); err != nil {
 		return fmt.Errorf("web: %w (is another cube-logger already running?)", err)
 	}
@@ -66,8 +71,9 @@ func liveCmd(args []string) error {
 	defer stop()
 
 	// Three goroutines and a wait: the socket, the reassembler's clock, and the
-	// web server. Records only ever enter the store here, so ordering by ID
-	// stays the order they were reassembled in.
+	// web server. Records only ever enter the store through the feeder, so
+	// ordering by ID stays the order they were reassembled in and the call
+	// index sees the stream in that same order.
 	errs := make(chan error, 3)
 	seen := map[string]bool{}
 	go func() {
@@ -77,7 +83,7 @@ func liveCmd(args []string) error {
 				seen[d.Source] = true
 				fmt.Fprintf(os.Stderr, "receiving from %s\n", d.Source)
 			}
-			st.Add(re.Datagram(d)...)
+			add.records(re.Datagram(d)...)
 		})
 	}()
 	go func() {
@@ -89,7 +95,7 @@ func liveCmd(args []string) error {
 				errs <- nil
 				return
 			case now := <-t.C:
-				st.Add(re.Tick(now)...)
+				add.records(re.Tick(now)...)
 			}
 		}
 	}()
@@ -103,9 +109,36 @@ func liveCmd(args []string) error {
 
 	// Whatever was half-assembled is still worth showing; it is written to the
 	// store rather than dropped, so a -buffer dump after Ctrl-C is complete.
-	st.Add(re.Flush()...)
-	printLiveSummary(ln, st, re)
+	add.records(re.Flush()...)
+	printLiveSummary(ln, st, re, ix)
 	return err
+}
+
+// feeder is the one door into the store, and the only thing that feeds the
+// call index.
+//
+// Two goroutines add records — the socket and the reassembler's clock — and
+// the store delivers to subscribers after it has released its own lock, so
+// subscription order is not ID order. The correlator behind the index reads a
+// stream and has to be given records in the order they happened, so it is fed
+// here, inside one lock, rather than from a subscription.
+type feeder struct {
+	mu sync.Mutex
+	st *store.Store
+	ix *calls.Index
+}
+
+func (f *feeder) records(recs ...*live.Record) {
+	if len(recs) == 0 {
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, e := range f.st.Add(recs...) {
+		if e.Record != nil && e.Record.Record != nil {
+			f.ix.Add(e.ID, e.Record.Record)
+		}
+	}
 }
 
 func printBanner(ln *listen.Listener, srv *web.Server) {
@@ -138,11 +171,15 @@ func routerConfig(addr string) []string {
 	}
 }
 
-func printLiveSummary(ln *listen.Listener, st *store.Store, re *live.Reassembler) {
+func printLiveSummary(ln *listen.Listener, st *store.Store, re *live.Reassembler, ix *calls.Index) {
 	ls := ln.Stats()
 	ss := st.Stats()
-	fmt.Fprintf(os.Stderr, "\n%d datagram(s), %d byte(s), %d record(s)\n",
-		ls.Datagrams, ls.Bytes, ss.Total)
+	cs := ix.Stats()
+	fmt.Fprintf(os.Stderr, "\n%d datagram(s), %d byte(s), %d record(s), %d call(s)\n",
+		ls.Datagrams, ls.Bytes, ss.Total, cs.Total)
+	if cs.Evicted > 0 {
+		fmt.Fprintf(os.Stderr, "  %d call(s) dropped to stay within -calls=%d\n", cs.Evicted, cs.Max)
+	}
 	if ls.Blocked > 0 {
 		fmt.Fprintf(os.Stderr, "  %d datagram(s) blocked by the allowlist\n", ls.Blocked)
 	}

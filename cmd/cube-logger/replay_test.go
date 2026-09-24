@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phuongnz/cube-logger/internal/calls"
 	"github.com/phuongnz/cube-logger/internal/listen"
 	"github.com/phuongnz/cube-logger/internal/live"
 	"github.com/phuongnz/cube-logger/internal/store"
@@ -106,6 +107,7 @@ type receiver struct {
 	ln    *listen.Listener
 	re    *live.Reassembler
 	st    *store.Store
+	ix    *calls.Index
 	srv   *web.Server
 	stop  context.CancelFunc
 	waits sync.WaitGroup
@@ -120,15 +122,22 @@ func startReceiver(t *testing.T) *receiver {
 	re := live.New()
 	re.Year = 2026
 	st := store.New(1000)
-	srv := &web.Server{Store: st, Live: re, Listener: ln, Title: "test"}
+	ix := calls.New(0)
+	add := &feeder{st: st, ix: ix}
+	srv := &web.Server{Store: st, Live: re, Listener: ln, Calls: ix, Title: "test"}
 	if err := web.Open("127.0.0.1:0", srv); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	r := &receiver{ln: ln, re: re, st: st, srv: srv, stop: cancel}
+	r := &receiver{ln: ln, re: re, st: st, ix: ix, srv: srv, stop: cancel}
 
+	// The same feeder the command uses, so the test exercises the ordering the
+	// correlator depends on rather than a simpler path that happens to work.
 	r.waits.Add(3)
-	go func() { defer r.waits.Done(); _ = ln.Run(ctx, func(d live.Datagram) { st.Add(re.Datagram(d)...) }) }()
+	go func() {
+		defer r.waits.Done()
+		_ = ln.Run(ctx, func(d live.Datagram) { add.records(re.Datagram(d)...) })
+	}()
 	go func() {
 		defer r.waits.Done()
 		tick := time.NewTicker(20 * time.Millisecond)
@@ -138,7 +147,7 @@ func startReceiver(t *testing.T) *receiver {
 			case <-ctx.Done():
 				return
 			case now := <-tick.C:
-				st.Add(re.Tick(now)...)
+				add.records(re.Tick(now)...)
 			}
 		}
 	}()
@@ -317,5 +326,49 @@ func TestRouterConfigNamesThePortActuallyBound(t *testing.T) {
 	// there is no reordering and no gap detection. It is not optional advice.
 	if !strings.Contains(strings.Join(lines, "\n"), "service sequence-numbers") {
 		t.Errorf("config does not tell the engineer to turn on sequence numbers: %q", lines)
+	}
+}
+
+// The call list is the phase's end-to-end claim: a fixture replayed over a
+// real socket comes out the other end as a call an engineer can select, with a
+// ladder and a set of records the table can be narrowed to.
+func TestReplayProducesACallWithALadder(t *testing.T) {
+	r := startReceiver(t)
+	replay(t, "-to", r.ln.Addr(), "-rate", "0", fixture("basic_call.txt"))
+	waitFor(t, "a call", func() bool { return len(r.ix.List(0, false)) > 0 })
+
+	list := r.ix.List(0, false)
+	if len(list) != 1 {
+		t.Fatalf("calls = %d, want the one call in the fixture", len(list))
+	}
+	c := list[0]
+	if c.Calling == "" || c.Called == "" {
+		t.Errorf("call has no from/to: %+v", c)
+	}
+	if c.Legs != 2 {
+		t.Errorf("legs = %d, want the two legs of a back-to-back call", c.Legs)
+	}
+
+	d, ok := r.ix.Get(c.ID, r.srv.Lookup)
+	if !ok {
+		t.Fatalf("call %s vanished between the list and the detail", c.ID)
+	}
+	if len(d.Records) == 0 {
+		t.Fatal("the call carries no records")
+	}
+	if d.Ladder == nil || len(d.Ladder.Arrows) == 0 {
+		t.Fatal("no ladder was built from a call that is entirely SIP")
+	}
+	// Every record of the call is still in the ring, so nothing should be
+	// reported missing. A ladder that quietly loses messages is worse than one
+	// that admits to it.
+	if d.Ladder.Missing != 0 {
+		t.Errorf("ladder is missing %d record(s) that the ring still holds", d.Ladder.Missing)
+	}
+	// And the records really are the call's: the store has each of them.
+	for _, ref := range d.Records {
+		if _, ok := r.st.Get(ref); !ok {
+			t.Errorf("record %d is not in the store", ref)
+		}
 	}
 }

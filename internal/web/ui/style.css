@@ -92,7 +92,8 @@ button.on { background: var(--accent); border-color: var(--accent); color: #0612
 /* ---- layout ---- */
 
 main { flex: 1 1 auto; display: flex; min-height: 0; }
-#table { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+#centre { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+#table { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
 #viewport { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; position: relative; }
 #spacer { width: 1px; }
@@ -203,3 +204,104 @@ main { flex: 1 1 auto; display: flex; min-height: 0; }
 }
 #status .src { color: var(--fg); }
 #status .lost { color: var(--sev-warn); }
+
+/* ---- call list ---- */
+
+#calls {
+  flex: 0 0 258px; min-width: 258px;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--line); background: var(--bg-alt);
+}
+#calls[hidden] { display: none; }
+
+#calls-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; background: var(--bg-head);
+  border-bottom: 1px solid var(--line);
+  text-transform: uppercase; font-size: 11px; letter-spacing: .06em;
+  color: var(--muted);
+}
+#calls-head .check { text-transform: none; letter-spacing: 0; }
+#calls-count { margin-left: auto; }
+
+#calls-list { flex: 1 1 auto; overflow-y: auto; }
+#calls-empty { padding: 16px 10px; }
+
+.call-row {
+  padding: 4px 8px 5px;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  cursor: default;
+}
+.call-row:hover { background: var(--line); }
+.call-row.sel { background: var(--line); border-left-color: var(--accent); }
+/* A call still up gets the live colour, a failed one the error colour: the
+   list is meant to be scanned, not read. */
+.call-row.active { border-left-color: var(--sip-in); }
+.call-row.failed .cl-res { color: var(--bad); font-weight: 600; }
+.call-row.failed { border-left-color: var(--bad); }
+.call-row.keepalive { opacity: .65; }
+
+.cl-who { display: flex; gap: 6px; white-space: nowrap; }
+.cl-from, .cl-to { overflow: hidden; text-overflow: ellipsis; }
+.cl-from { flex: 1 1 45%; }
+.cl-to { flex: 1 1 55%; color: var(--accent); }
+.cl-arrow { color: var(--muted); flex: 0 0 auto; }
+.cl-meta { display: flex; gap: 8px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.cl-time { flex: 0 0 auto; }
+.cl-dur { flex: 0 0 auto; }
+.cl-res { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+
+/* ---- ladder ---- */
+
+#ladder {
+  flex: 0 0 auto; max-height: 46%;
+  display: flex; flex-direction: column;
+  border-bottom: 1px solid var(--line); background: var(--bg-alt);
+}
+#ladder[hidden] { display: none; }
+
+#ladder-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px; background: var(--bg-head);
+  border-bottom: 1px solid var(--line);
+}
+#ladder-head .spacer { flex: 1 1 auto; }
+#ladder-head button { padding: 2px 8px; font-size: 12px; }
+#call-close { border: none; background: none; font-size: 18px; line-height: 1; color: var(--muted); }
+#ladder-sub.lost { color: var(--sev-warn); }
+#ladder-body { flex: 1 1 auto; overflow: auto; padding: 4px 0 8px; }
+.lad-empty { padding: 12px; }
+
+.ladder-svg { display: block; font: inherit; }
+.ladder-svg text { fill: var(--fg); font-size: 11px; }
+.lad-col { fill: var(--muted); font-size: 11px; }
+.lad-col.cube { fill: var(--accent); font-weight: 700; }
+.lad-life { stroke: var(--line); stroke-width: 1; }
+.lad-life.cube { stroke: var(--accent); stroke-opacity: .45; stroke-width: 2; }
+.lad-time { fill: var(--muted); font-size: 10px; }
+
+/* The four classes the server gives an arrow, and nothing else: a request, a
+   provisional response, a final success, a failure. */
+.lad-arrow { stroke-width: 1.5; fill: none; }
+.lad-arrow.request     { stroke: var(--sip-out); }
+.lad-arrow.provisional { stroke: var(--other); stroke-dasharray: 4 3; }
+.lad-arrow.success     { stroke: var(--sip-in); }
+.lad-arrow.failure     { stroke: var(--bad); }
+.lad-head.request     { fill: var(--sip-out); }
+.lad-head.provisional { fill: var(--other); }
+.lad-head.success     { fill: var(--sip-in); }
+.lad-head.failure     { fill: var(--bad); }
+.lad-label.request     { fill: var(--sip-out); }
+.lad-label.provisional { fill: var(--other); }
+.lad-label.success     { fill: var(--sip-in); }
+.lad-label.failure     { fill: var(--bad); font-weight: 700; }
+.lad-warn { fill: var(--bad); }
+
+.lad-note-line { stroke: var(--line); stroke-dasharray: 2 3; }
+.lad-note { fill: var(--sev-warn); font-size: 10px; }
+.lad-note.bad { fill: var(--bad); }
+
+.lad-item { cursor: default; }
+.lad-item:hover .lad-label { text-decoration: underline; }
+.lad-item.sel .lad-label { fill: var(--fg); font-weight: 700; }

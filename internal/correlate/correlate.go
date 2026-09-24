@@ -74,10 +74,17 @@ type Leg struct {
 	// not a call. The UI should be able to hide these.
 	Keepalive bool `json:"keepalive,omitempty"`
 
-	Records  []int    `json:"records"`
+	// Records references this leg's records. On the file path a reference is
+	// the record's index in Correlator.Records(); on the live path it is the
+	// store ID the caller passed to AddRef. Either way it is a handle the
+	// caller can resolve, never a pointer the correlator has to keep alive.
+	Records  []uint64 `json:"records"`
 	Warnings []string `json:"warnings,omitempty"`
 
 	call *Call
+	// entryKeys and callIDKeys are the index keys this leg owns, so eviction
+	// can take them out again without walking every map.
+	entryKeys, callIDKeys []string
 }
 
 // Call is one call: the legs that share a GUID within a time window, or a
@@ -103,7 +110,9 @@ type Call struct {
 	Legs      []*Leg   `json:"legs"`
 	Warnings  []string `json:"warnings,omitempty"`
 
-	merged bool
+	// mergedInto is set when this call turned out to be another one. The ID
+	// stays resolvable, because a browser may still be holding it.
+	mergedInto *Call
 }
 
 // Duration is how long the call lasted, from its first record to its last.
@@ -116,26 +125,49 @@ const DefaultGUIDWindow = 5 * time.Second
 
 // Correlator turns a record stream into calls. Feed records in order with Add
 // and read the answer with Result.
+//
+// A file ends, so the file path can keep everything: Add holds on to each
+// record and Result hands back every call. A live stream does not end, which is
+// what MaxCalls and AddRef are for — see AddRef.
 type Correlator struct {
 	// GUIDWindow scopes GUID grouping in time. Zero means DefaultGUIDWindow.
 	GUIDWindow time.Duration
 
+	// MaxCalls bounds how many calls are kept. Zero means no bound, which is
+	// right for a file and wrong for a stream that runs for days. Past the
+	// bound the oldest finished calls are dropped first.
+	MaxCalls int
+
+	// Forget, when set, is called with the ID of a call that has stopped being
+	// a call in its own right: it was evicted, or it turned out to be part of
+	// another call. A live view keeps a list of calls and needs to be told what
+	// to take off it; without this it would have to diff the whole list.
+	//
+	// A merged ID still resolves through Call — a browser may have selected it
+	// before the merge — but it is no longer a row of its own.
+	Forget func(id string)
+
 	records []*parse.Record
-	legs    []*Leg
 	calls   []*Call
+	byID    map[string]*Call
+
+	nLegs, nCalls int
+	evicted       uint64
 
 	byEntry  map[string]*Leg
 	byCallID map[string]*Leg
 	openGUID map[string]*Call
 
 	// unattached are records that belong to no call: dial-peer and TLS state,
-	// logins, and anything else the box says about itself.
-	unattached []int
+	// logins, and anything else the box says about itself. Only collected when
+	// the correlator is keeping records; on a live stream the store has them.
+	unattached []uint64
 }
 
 // New returns an empty Correlator.
 func New() *Correlator {
 	return &Correlator{
+		byID:     map[string]*Call{},
 		byEntry:  map[string]*Leg{},
 		byCallID: map[string]*Leg{},
 		openGUID: map[string]*Call{},
@@ -145,7 +177,7 @@ func New() *Correlator {
 // Result is the finished grouping.
 type Result struct {
 	Calls      []*Call  `json:"calls"`
-	Unattached []int    `json:"unattached,omitempty"`
+	Unattached []uint64 `json:"unattached,omitempty"`
 	Warnings   []string `json:"warnings,omitempty"`
 }
 
@@ -183,20 +215,55 @@ func callIDKey(source, sipCallID string) string {
 	return source + "\x00" + sipCallID
 }
 
-// Add takes the next record. Records must arrive in the order they were logged.
+// Add takes the next record and keeps it. Records must arrive in the order they
+// were logged. A leg's Records then index into Records().
 func (c *Correlator) Add(r *parse.Record) {
-	idx := len(c.records)
+	ref := uint64(len(c.records))
 	c.records = append(c.records, r)
+	c.add(ref, r, true)
+}
 
+// Records returns the records Add has seen, in order. AddRef keeps none, so on
+// the live path this is empty and a leg's Records are the caller's own IDs.
+func (c *Correlator) Records() []*parse.Record { return c.records }
+
+// AddRef takes the next record without keeping it. ref is the caller's own
+// handle for the record — a store ID on the live path — and it is what a leg's
+// Records will contain.
+//
+// This is the difference between a run that ends and a run that does not. Add
+// pins every record it has ever seen, which for a file is exactly right and for
+// a session left open overnight is a leak. With AddRef the records live in the
+// ring, which already knows how to forget them, and the correlator holds
+// nothing but identifiers — so with MaxCalls set it is bounded in both
+// directions.
+//
+// It returns the call the record landed in, or nil when the record belongs to
+// no call at all — dial-peer state, a login, anything the box says about
+// itself. The caller uses that to know which call to redraw.
+func (c *Correlator) AddRef(ref uint64, r *parse.Record) *Call {
+	return c.add(ref, r, false)
+}
+
+func (c *Correlator) add(ref uint64, r *parse.Record, keep bool) *Call {
 	entry, guid, sipCallID := ids(r)
 	leg := c.leg(r, entry, sipCallID)
 	if leg == nil {
-		c.unattached = append(c.unattached, idx)
-		return
+		if keep {
+			c.unattached = append(c.unattached, ref)
+		}
+		return nil
 	}
-	leg.Records = append(leg.Records, idx)
+	leg.Records = append(leg.Records, ref)
 	c.observe(leg, r, guid, sipCallID)
 	c.place(leg, guid, r.Time)
+	c.evict()
+	// place may have merged this leg's call into another, and eviction may
+	// have dropped it outright; either way leg.call is the answer now.
+	if leg.call == nil || leg.call.mergedInto != nil {
+		return c.resolve(leg.call)
+	}
+	return leg.call
 }
 
 // leg finds or creates the leg a record belongs to.
@@ -215,7 +282,7 @@ func (c *Correlator) leg(r *parse.Record, entry int64, sipCallID string) *Leg {
 				// The leg was created from the Call-ID of an INVITE that arrived
 				// before CUBE had allocated a call entry ID. Adopt it now.
 				l.CallEntryID = entry
-				c.byEntry[entryKey(r.Source, entry)] = l
+				c.ownEntry(l, entryKey(r.Source, entry))
 				return l
 			default:
 				// The same Call-ID on two call entry IDs: a peer reflected it.
@@ -229,22 +296,35 @@ func (c *Correlator) leg(r *parse.Record, entry int64, sipCallID string) *Leg {
 		return nil // nothing to hang it on: box-level, not call-level
 	}
 
+	c.nLegs++
 	l := &Leg{
-		ID:          "leg-" + strconv.Itoa(len(c.legs)+1),
+		ID:          "leg-" + strconv.Itoa(c.nLegs),
 		Source:      r.Source,
 		CallEntryID: entry,
 		Start:       r.Time,
 		End:         r.Time,
 		State:       StateSetup,
 	}
-	c.legs = append(c.legs, l)
 	if entry != parse.NoCallID {
-		c.byEntry[entryKey(r.Source, entry)] = l
+		c.ownEntry(l, entryKey(r.Source, entry))
 	}
 	if sipCallID != "" {
-		c.byCallID[callIDKey(r.Source, sipCallID)] = l
+		c.ownCallID(l, callIDKey(r.Source, sipCallID))
 	}
 	return l
+}
+
+// ownEntry and ownCallID point an index key at a leg and remember that the leg
+// owns it. Eviction needs the keys back; walking two maps to find them would
+// turn forgetting one call into work proportional to the whole session.
+func (c *Correlator) ownEntry(l *Leg, key string) {
+	c.byEntry[key] = l
+	l.entryKeys = append(l.entryKeys, key)
+}
+
+func (c *Correlator) ownCallID(l *Leg, key string) {
+	c.byCallID[key] = l
+	l.callIDKeys = append(l.callIDKeys, key)
 }
 
 // observe folds one record into the leg it belongs to.
@@ -266,7 +346,7 @@ func (c *Correlator) observe(leg *Leg, r *parse.Record, guid, sipCallID string) 
 		leg.SIPCallIDs = append(leg.SIPCallIDs, sipCallID)
 		k := callIDKey(r.Source, sipCallID)
 		if _, taken := c.byCallID[k]; !taken {
-			c.byCallID[k] = leg
+			c.ownCallID(leg, k)
 		}
 	}
 	if r.Cover != nil {
@@ -383,8 +463,10 @@ func (c *Correlator) place(leg *Leg, guid string, t time.Time) {
 		call = c.openCall(guid, t)
 	}
 	if call == nil {
-		call = &Call{ID: "call-" + strconv.Itoa(len(c.calls)+1), GUID: guid, Start: t, End: t}
+		c.nCalls++
+		call = &Call{ID: "call-" + strconv.Itoa(c.nCalls), GUID: guid, Start: t, End: t}
 		c.calls = append(c.calls, call)
+		c.byID[call.ID] = call
 		if guid != "" {
 			c.openGUID[guid] = call
 		}
@@ -431,29 +513,129 @@ func (c *Correlator) mergeCalls(dst, src *Call) {
 		dst.Legs = append(dst.Legs, l)
 	}
 	src.Legs = nil
-	src.merged = true
+	src.mergedInto = dst
+	c.forget(src.ID)
+}
+
+func (c *Correlator) forget(id string) {
+	if c.Forget != nil {
+		c.Forget(id)
+	}
+}
+
+// Call resolves a call ID, following merges: a browser that selected a call
+// before its second leg arrived is holding an ID that has since been folded
+// into another, and it should land on the call rather than on nothing.
+func (c *Correlator) Call(id string) *Call { return c.resolve(c.byID[id]) }
+
+func (c *Correlator) resolve(call *Call) *Call {
+	for i := 0; call != nil && call.mergedInto != nil; i++ {
+		if i > 100 {
+			return nil // a merge cycle cannot happen; do not hang if it does
+		}
+		call = call.mergedInto
+	}
+	if call == nil || len(call.Legs) == 0 {
+		return nil
+	}
+	RollUp(call)
+	return call
+}
+
+// Calls returns the live calls, oldest first, rolled up. Merged and empty ones
+// are left out: they are bookkeeping, not calls.
+func (c *Correlator) Calls() []*Call {
+	out := make([]*Call, 0, len(c.calls))
+	for _, call := range c.calls {
+		if call.mergedInto != nil || len(call.Legs) == 0 {
+			continue
+		}
+		RollUp(call)
+		out = append(out, call)
+	}
+	return out
+}
+
+// Evicted is how many calls have been dropped to stay inside MaxCalls. It is
+// this tool running out of room, like the store's own eviction, and it must
+// never be shown as if records had been lost on the wire.
+func (c *Correlator) Evicted() uint64 { return c.evicted }
+
+// evict drops the oldest calls once there are more than MaxCalls of them.
+//
+// Finished calls go first: an engineer watching a live system cares about the
+// call that is ringing now, and a call that ended an hour ago is the one they
+// can afford to lose. Only when every call is still open does the oldest go
+// regardless — a stream of calls that never end is a correlator that never
+// learned they ended, and the alternative is unbounded memory.
+func (c *Correlator) evict() {
+	// How far along the list to look for a call that has already finished.
+	// The list is in creation order and this runs once per new call, so the
+	// bound is what keeps eviction from costing a scan of the whole session
+	// every time a phone rings.
+	const scan = 64
+
+	for c.MaxCalls > 0 && len(c.calls) > c.MaxCalls {
+		victim := 0
+		for i := 0; i < len(c.calls) && i < scan; i++ {
+			if finished(c.calls[i]) {
+				victim = i
+				break
+			}
+		}
+		c.drop(c.calls[victim])
+		c.calls = append(c.calls[:victim], c.calls[victim+1:]...)
+	}
+}
+
+// finished reports whether every leg of a call has been torn down. It reads the
+// legs rather than Call.State, because Call.State is only as fresh as the last
+// RollUp and rolling every candidate up on every eviction would cost more than
+// the eviction saves.
+func finished(call *Call) bool {
+	if call.mergedInto != nil || len(call.Legs) == 0 {
+		return true
+	}
+	for _, l := range call.Legs {
+		if l.State != StateEnded {
+			return false
+		}
+	}
+	return true
+}
+
+// drop forgets one call and everything that points at it.
+func (c *Correlator) drop(call *Call) {
+	delete(c.byID, call.ID)
+	if call.GUID != "" && c.openGUID[call.GUID] == call {
+		delete(c.openGUID, call.GUID)
+	}
+	for _, l := range call.Legs {
+		for _, k := range l.entryKeys {
+			if c.byEntry[k] == l {
+				delete(c.byEntry, k)
+			}
+		}
+		for _, k := range l.callIDKeys {
+			if c.byCallID[k] == l {
+				delete(c.byCallID, k)
+			}
+		}
+	}
+	if call.mergedInto == nil {
+		c.evicted++
+		c.forget(call.ID)
+	}
 }
 
 // Result finishes the grouping: it rolls each call up from its legs and drops
 // the calls that were merged away.
 func (c *Correlator) Result() *Result {
-	res := &Result{Unattached: c.unattached}
-	for _, call := range c.calls {
-		if call.merged || len(call.Legs) == 0 {
-			continue
-		}
-		rollUp(call)
-		res.Calls = append(res.Calls, call)
-	}
-	return res
+	return &Result{Unattached: c.unattached, Calls: c.Calls()}
 }
 
-// Records returns the records the correlator has seen, in order. A leg's
-// Records field indexes into this slice.
-func (c *Correlator) Records() []*parse.Record { return c.records }
-
-// rollUp derives a call's summary from its legs.
-func rollUp(call *Call) {
+// RollUp derives a call's summary from its legs.
+func RollUp(call *Call) {
 	sort.SliceStable(call.Legs, func(i, j int) bool {
 		return call.Legs[i].Start.Before(call.Legs[j].Start)
 	})

@@ -376,3 +376,22 @@ func (s *Store) Search(m *Match, max int) []Entry {
 	}
 	return out
 }
+
+// Get returns one entry by ID. The second result is false for a record the
+// ring has already overwritten, or one that was never stored.
+//
+// IDs are dense and ascending, so this is arithmetic rather than a search:
+// looking up the twenty records of a call is twenty index calculations, not
+// twenty walks of a hundred thousand entries.
+func (s *Store) Get(id uint64) (Entry, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.n == 0 {
+		return Entry{}, false
+	}
+	oldest := s.buf[s.head].ID
+	if id < oldest || id >= oldest+uint64(s.n) {
+		return Entry{}, false
+	}
+	return s.buf[(s.head+int(id-oldest))%s.cap], true
+}

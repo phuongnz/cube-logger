@@ -31,10 +31,17 @@ const el = {
   detail: $('detail'), detailTitle: $('detail-title'), detailMeta: $('detail-meta'),
   detailRaw: $('detail-raw'), detailClose: $('detail-close'),
   statusStore: $('status-store'), statusSources: $('status-sources'),
+  calls: $('calls'), callsToggle: $('calls-toggle'), callsList: $('calls-list'),
+  callsEmpty: $('calls-empty'), callsCount: $('calls-count'),
+  callsKeepalives: $('calls-keepalives'),
+  ladder: $('ladder'), ladderTitle: $('ladder-title'), ladderSub: $('ladder-sub'),
+  ladderBody: $('ladder-body'),
+  callCopy: $('call-copy'), callDownload: $('call-download'), callClose: $('call-close'),
 };
 
 const state = {
   all: [],            // every record received, oldest first
+  byId: new Map(),    // record id -> record, for the ladder's arrows
   view: [],           // the filtered slice the table shows
   held: [],           // records arriving while paused
   lastId: 0,          // highest record id seen, for resuming after a drop
@@ -45,6 +52,15 @@ const state = {
   filter: { text: '', severity: -1, kind: '', source: '', incomplete: false },
   firstRendered: -1,
   lastRendered: -1,
+
+  // The call side. `calls` is the list the server keeps in step by revision;
+  // `call` is the one opened, with its record references and its ladder, and
+  // `callRefs` is what narrows the table to it.
+  hasIndex: false,
+  calls: new Map(),
+  callId: null,
+  call: null,
+  callRefs: null,
 };
 
 // ---------------------------------------------------------------- rendering
@@ -91,9 +107,11 @@ function kindLabel(r) {
 
 // A record's clock reading, which comes from its head line. A continuation
 // line has no timestamp of its own, so there is only ever one time per record.
-function clock(r) {
-  if (!r.time) return '';
-  const t = new Date(r.time);
+function clock(r) { return clockTime(r.time); }
+
+function clockTime(iso) {
+  if (!iso) return '';
+  const t = new Date(iso);
   if (isNaN(t)) return '';
   const p = (n, w = 2) => String(n).padStart(w, '0');
   // The device's own clock, printed as the device printed it. It is shown in
@@ -189,6 +207,10 @@ function scrollToEnd() {
 
 function matches(r) {
   const f = state.filter;
+  // A call is selected: the table is that call and nothing else, notices
+  // included. A row from somewhere else in the session, sitting inside what
+  // says it is one call, is worse than not being shown at all.
+  if (state.callRefs && !state.callRefs.has(r.id)) return false;
   // A notice — a sequence gap, records the ring overwrote — is never filtered
   // out by severity or type. It explains what is *not* on screen, so hiding it
   // would defeat its purpose.
@@ -250,6 +272,7 @@ function addRecords(records) {
     if (r.id && r.id <= state.lastId) continue; // a resync may repeat records
     if (r.id) state.lastId = r.id;
     if (r.source) state.sources.add(r.source);
+    if (r.id) state.byId.set(r.id, r);
     state.all.push(r);
     if (matches(r)) { state.view.push(r); grew = true; }
   }
@@ -265,8 +288,11 @@ function addRecords(records) {
 function trim(list) {
   if (list.length <= MAX_RECORDS) return;
   const drop = list.length - MAX_RECORDS;
-  list.splice(0, drop);
-  if (list === state.all) state.view = state.all.filter(matches);
+  const gone = list.splice(0, drop);
+  if (list === state.all) {
+    for (const r of gone) state.byId.delete(r.id);
+    state.view = state.all.filter(matches);
+  }
 }
 
 // A notice is a synthetic row that explains something the records cannot: a
@@ -294,6 +320,396 @@ function refreshSources() {
     el.source.appendChild(o);
   }
   el.source.value = cur;
+}
+
+// ---------------------------------------------------------------- calls
+
+// The call list is the other half of this tool: a table of records tells you
+// what the router said, a list of calls tells you which call to look at. The
+// server keeps it in step by revision, so what arrives here is what changed.
+
+const CALL_ROWS = 400;   // rows drawn in the pane; the index holds far more
+
+function applyCallUpdate(u) {
+  state.hasIndex = true;
+  if (u.reset) state.calls.clear();
+  for (const c of u.calls || []) {
+    c._t = Date.parse(c.start) || 0;
+    state.calls.set(c.id, c);
+  }
+  for (const id of u.removed || []) {
+    // A removed call is either evicted or merged into its other leg. If it is
+    // the one on screen, the server tells us which call it became in the next
+    // "call" message, so the pane is left alone here.
+    state.calls.delete(id);
+  }
+  showCallsPane();
+  renderCalls();
+}
+
+function callRows() {
+  const keep = el.callsKeepalives.checked;
+  const rows = [];
+  for (const c of state.calls.values()) {
+    if (c.keepalive && !keep) continue;
+    rows.push(c);
+  }
+  // Newest first: the call an engineer is asking about is the one that just
+  // happened.
+  rows.sort((a, b) => b._t - a._t);
+  return rows;
+}
+
+function renderCalls() {
+  const rows = callRows();
+  const shown = rows.slice(0, CALL_ROWS);
+  el.callsEmpty.hidden = rows.length > 0;
+  el.callsCount.textContent = rows.length
+    ? (rows.length > shown.length ? `${shown.length} of ${rows.length}` : String(rows.length))
+    : '';
+
+  const list = el.callsList;
+  while (list.children.length < shown.length) list.appendChild(makeCallRow());
+  while (list.children.length > shown.length) list.lastChild.remove();
+
+  for (let i = 0; i < shown.length; i++) {
+    const c = shown[i], row = list.children[i];
+    row.dataset.id = c.id;
+    row.className = 'call-row'
+      + (c.failed ? ' failed' : '')
+      + (c.state !== 'ended' ? ' active' : '')
+      + (c.keepalive ? ' keepalive' : '')
+      + (c.id === state.callId ? ' sel' : '');
+    const [line1, line2] = row.children;
+    const [from, arrow, to] = line1.children;
+    const [time, dur, res] = line2.children;
+    from.textContent = c.calling || '-';
+    arrow.textContent = '→';
+    to.textContent = c.called || '-';
+    time.textContent = clockTime(c.start);
+    dur.textContent = duration(c);
+    res.textContent = result(c);
+    row.title = `${c.id}${c.guid ? ' · ' + c.guid : ''}`
+      + `\n${c.legs} leg(s), ${c.records} record(s)`
+      + (c.warnings && c.warnings.length ? '\n⚠ ' + c.warnings.join('\n⚠ ') : '');
+  }
+}
+
+function makeCallRow() {
+  const row = document.createElement('div');
+  row.className = 'call-row';
+  row.setAttribute('role', 'listitem');
+  const line1 = document.createElement('div');
+  line1.className = 'cl-who';
+  for (const cls of ['cl-from', 'cl-arrow', 'cl-to']) {
+    const s = document.createElement('span');
+    s.className = cls;
+    line1.appendChild(s);
+  }
+  const line2 = document.createElement('div');
+  line2.className = 'cl-meta';
+  for (const cls of ['cl-time', 'cl-dur', 'cl-res']) {
+    const s = document.createElement('span');
+    s.className = cls;
+    line2.appendChild(s);
+  }
+  row.append(line1, line2);
+  row.addEventListener('click', () => {
+    if (row.dataset.id === state.callId) closeCall();
+    else openCall(row.dataset.id);
+  });
+  return row;
+}
+
+// duration is how long the call lasted, at the precision an engineer reads:
+// milliseconds for a setup that failed, seconds for a call that connected.
+function duration(c) {
+  const ms = c.durationMs || 0;
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  const m = Math.floor(ms / 60000), s = Math.round((ms % 60000) / 1000);
+  return `${m}m${String(s).padStart(2, '0')}s`;
+}
+
+// result is the answer to "what happened to it", in one cell.
+function result(c) {
+  if (c.iec) return `${c.result || c.cause || 'failed'} · IEC`;
+  const r = [c.result, c.cause].filter(Boolean).join(' ');
+  if (r) return r;
+  return c.state === 'ended' ? 'ended' : (c.state || '');
+}
+
+// ---------------------------------------------------------------- one call
+
+function openCall(id) {
+  state.callId = id;
+  state.call = null;
+  state.callRefs = new Set();   // nothing until the detail arrives
+  tellServer();
+  renderCalls();
+  showCall(null);
+  applyFilter();
+  // If the socket is down the list is still on screen and still clickable, so
+  // the call is fetched instead. The view should not stop working because the
+  // stream did.
+  if (!sock || sock.readyState !== WebSocket.OPEN) {
+    fetch(`/api/calls/${encodeURIComponent(id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && state.callId === id) gotCall(d); })
+      .catch(() => {});
+  }
+}
+
+function closeCall() {
+  state.callId = null;
+  state.call = null;
+  state.callRefs = null;
+  tellServer();
+  renderCalls();
+  showCall(null);
+  applyFilter();
+}
+
+// tellServer says which call this browser is looking at, so the server pushes
+// that call as it grows instead of the browser asking once a second.
+function tellServer() {
+  if (sock && sock.readyState === WebSocket.OPEN) {
+    sock.send(JSON.stringify({ type: 'select', call: state.callId || '' }));
+  }
+}
+
+function gotCall(d) {
+  // Two legs that turn out to be one call are merged under one id, so the call
+  // that comes back is not always the one that was asked for.
+  state.callId = d.id;
+  state.call = d;
+  state.callRefs = new Set(d.recordRefs || []);
+  renderCalls();
+  showCall(d);
+  applyFilter();
+}
+
+function showCall(d) {
+  el.ladder.hidden = !d && !state.callId;
+  if (!state.callId) return;
+  if (!d) {
+    el.ladderTitle.textContent = 'loading…';
+    el.ladderSub.textContent = '';
+    el.ladderBody.textContent = '';
+    return;
+  }
+  el.ladderTitle.textContent = `${d.calling || '-'} → ${d.called || '-'}`;
+  const bits = [d.id];
+  if (d.guid) bits.push(d.guid);
+  bits.push(duration(d));
+  const r = result(d);
+  if (r) bits.push(r);
+  if (d.iec) bits.push(`IEC ${d.iec}`);
+  bits.push(`${d.recordRefs ? d.recordRefs.length : 0} record(s)`);
+  // A ladder drawn from records the ring has overwritten is a ladder with
+  // messages missing from it, and it says so rather than reading as complete.
+  if (d.ladder && d.ladder.missing) {
+    bits.push(`${d.ladder.missing} no longer held`);
+  }
+  el.ladderSub.textContent = bits.join(' · ');
+  el.ladderSub.className = 'muted' + (d.ladder && d.ladder.missing ? ' lost' : '');
+  drawLadder(d.ladder);
+}
+
+// ---------------------------------------------------------------- ladder
+
+const SVG = $('ns').namespaceURI;   // see the note in index.html
+const LAD = { top: 34, row: 26, gutter: 74, pad: 12, minCol: 130 };
+
+function svg(name, attrs, text) {
+  const e = document.createElementNS(SVG, name);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+// drawLadder draws one column per endpoint — the CUBE in the middle, a peer on
+// each side — and one row per message, in time order. It is the picture an
+// engineer draws on a whiteboard when asked who sent what first.
+function drawLadder(l) {
+  el.ladderBody.textContent = '';
+  if (!l || !l.columns || !l.columns.length) {
+    el.ladderBody.appendChild(note('nothing to draw: this call has no SIP messages in the buffer'));
+    return;
+  }
+  const items = ((l.arrows || []).map((a) => ({ a })))
+    .concat((l.notes || []).map((n) => ({ n })))
+    .sort((x, y) => {
+      const tx = Date.parse((x.a || x.n).time) || 0, ty = Date.parse((y.a || y.n).time) || 0;
+      if (tx !== ty) return tx - ty;
+      return ((x.a || x.n).ref || 0) - ((y.a || y.n).ref || 0);
+    });
+
+  const cols = l.columns.length;
+  const avail = Math.max(el.ladderBody.clientWidth - LAD.gutter - LAD.pad * 2, 240);
+  const colW = Math.max(LAD.minCol, avail / cols);
+  const width = LAD.gutter + colW * cols + LAD.pad * 2;
+  const height = LAD.top + Math.max(items.length, 1) * LAD.row + LAD.pad;
+  const x = (i) => LAD.gutter + LAD.pad + colW * (i + 0.5);
+
+  const s = svg('svg', {
+    width, height, viewBox: `0 0 ${width} ${height}`, class: 'ladder-svg',
+  });
+
+  for (let i = 0; i < cols; i++) {
+    const c = l.columns[i];
+    const label = svg('text', {
+      x: x(i), y: 14, 'text-anchor': 'middle',
+      class: 'lad-col' + (c.kind === 'cube' ? ' cube' : ''),
+    }, fit(c.label || '?', colW));
+    label.appendChild(svg('title', {}, `${c.kind === 'cube' ? 'this CUBE' : 'peer'}: ${c.label || 'unknown'}`
+      + (c.legs && c.legs.length ? `\nleg(s): ${c.legs.join(', ')}` : '')));
+    s.appendChild(label);
+    s.appendChild(svg('line', {
+      x1: x(i), y1: 20, x2: x(i), y2: height - 4,
+      class: 'lad-life' + (c.kind === 'cube' ? ' cube' : ''),
+    }));
+  }
+
+  items.forEach((it, i) => {
+    const y = LAD.top + i * LAD.row + LAD.row / 2;
+    const g = svg('g', { class: 'lad-item', 'data-ref': src.ref || 0 });
+    const src = it.a || it.n;
+    g.appendChild(svg('text', { x: 4, y: y + 4, class: 'lad-time' }, clockTime(src.time)));
+
+    if (it.n) {
+      // A % log line: it belongs to the call but is not a message between two
+      // endpoints, so it spans the diagram rather than pointing anywhere.
+      g.appendChild(svg('line', {
+        x1: LAD.gutter, y1: y, x2: width - LAD.pad, y2: y, class: 'lad-note-line',
+      }));
+      g.appendChild(svg('text', {
+        x: LAD.gutter + 6, y: y - 4,
+        class: 'lad-note' + (it.n.severity >= 0 && it.n.severity <= 3 ? ' bad' : ''),
+      }, fit(it.n.text, width - LAD.gutter - 20)));
+    } else {
+      const a = it.a;
+      const from = x(a.from), to = x(a.to);
+      const dir = to >= from ? 1 : -1;
+      const head = to - dir * 6;
+      g.appendChild(svg('line', {
+        x1: from, y1: y, x2: head, y2: y, class: 'lad-arrow ' + (a.class || 'request'),
+      }));
+      g.appendChild(svg('polygon', {
+        points: `${to},${y} ${head},${y - 4} ${head},${y + 4}`,
+        class: 'lad-head ' + (a.class || 'request'),
+      }));
+      g.appendChild(svg('text', {
+        x: (from + to) / 2, y: y - 5, 'text-anchor': 'middle',
+        class: 'lad-label ' + (a.class || 'request'),
+      }, fit(a.label || '', Math.abs(to - from))));
+      if (a.incomplete) {
+        g.appendChild(svg('text', { x: width - LAD.pad - 4, y: y + 4, 'text-anchor': 'end', class: 'lad-warn' }, '⚠'));
+      }
+    }
+
+    const tip = it.a
+      ? `${it.a.label}${it.a.cseq ? '\nCSeq ' + it.a.cseq : ''}${it.a.leg ? '\nleg ' + it.a.leg : ''}`
+        + (it.a.incomplete ? '\n⚠ lines of this message are missing' : '')
+      : it.n.text;
+    g.appendChild(svg('title', {}, tip + '\n(click to open the record)'));
+    g.addEventListener('click', () => openRef(src.ref));
+    s.appendChild(g);
+  });
+
+  el.ladderBody.appendChild(s);
+  markLadder();
+}
+
+// markLadder keeps the ladder and the table pointing at the same record, from
+// whichever side it was clicked.
+function markLadder() {
+  const want = state.selected ? String(state.selected.id) : '';
+  for (const g of el.ladderBody.querySelectorAll('.lad-item')) {
+    g.classList.toggle('sel', g.dataset.ref === want);
+  }
+}
+
+function note(text) {
+  const p = document.createElement('p');
+  p.className = 'muted lad-empty';
+  p.textContent = text;
+  return p;
+}
+
+// fit shortens a label to what its column can hold. The monospaced font makes
+// the estimate good enough, and a label that overlaps its neighbour is worse
+// than one that is cut.
+function fit(text, px) {
+  const n = Math.max(4, Math.floor((px - 8) / 6.2));
+  return text.length <= n ? text : text.slice(0, n - 1) + '…';
+}
+
+// openRef opens the record an arrow was drawn from, and scrolls the table to
+// it: the ladder is the map, the table is the territory.
+function openRef(ref) {
+  const r = state.byId.get(ref);
+  if (!r) {
+    // Said here rather than as a notice row: with a call open the table is
+    // that call, and a notice row would be filtered out of the one place the
+    // engineer is looking.
+    el.ladderSub.textContent = `record ${ref} is no longer in this browser's buffer`;
+    el.ladderSub.className = 'muted lost';
+    return;
+  }
+  select(r);
+  const i = state.view.indexOf(r);
+  if (i >= 0) {
+    setFollow(false);
+    el.viewport.scrollTop = Math.max(0, i * ROW_H - el.viewport.clientHeight / 2);
+    render();
+  }
+}
+
+// ---------------------------------------------------------------- export
+
+// Copy and download both take the server's rendering rather than building one
+// here, so that what is pasted into a ticket and what is saved to a file are
+// the same text, holes and all.
+function callText() {
+  return fetch(`/api/calls/${encodeURIComponent(state.callId)}/text`)
+    .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`status ${r.status}`))));
+}
+
+function copyCall() {
+  if (!state.callId) return;
+  callText().then((text) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => flash(el.callCopy, 'Copied'));
+    }
+    return Promise.reject(new Error('no clipboard'));
+  }).catch(() => {
+    // A browser that will not give the page the clipboard still has to let the
+    // engineer have the text, so it goes on screen to be selected by hand.
+    callText().then((text) => {
+      el.detail.hidden = false;
+      el.detailTitle.textContent = state.callId;
+      el.detailMeta.innerHTML = '<p class="warn">This browser would not let the page write to '
+        + 'the clipboard. Select the text below and copy it.</p>';
+      el.detailRaw.textContent = text;
+    }).catch(() => flash(el.callCopy, 'Failed'));
+  });
+}
+
+function flash(button, text) {
+  const was = button.textContent;
+  button.textContent = text;
+  setTimeout(() => { button.textContent = was; }, 1200);
+}
+
+function downloadCall() {
+  if (!state.callId) return;
+  const a = document.createElement('a');
+  a.href = `/api/calls/${encodeURIComponent(state.callId)}/text`;
+  a.download = `${state.callId}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 // ---------------------------------------------------------------- detail
@@ -339,6 +755,7 @@ function select(r) {
   }
   el.detailMeta.innerHTML = html;
   el.detailRaw.textContent = (r.raw || [r.text || r.notice || '']).join('\n');
+  markLadder();
   render();
 }
 
@@ -351,6 +768,7 @@ function escape(s) {
 function closeDetail() {
   el.detail.hidden = true;
   state.selected = null;
+  markLadder();
   render();
 }
 
@@ -364,6 +782,14 @@ function showStatus(st) {
   bits.push(`${(s.records || 0).toLocaleString()} / ${(s.cap || 0).toLocaleString()} held`);
   if (s.evicted) bits.push(`${s.evicted.toLocaleString()} aged out of the ring`);
   if (st.listener && st.listener.blocked) bits.push(`${st.listener.blocked} blocked`);
+  if (st.calls) {
+    state.hasIndex = true;
+    let c = `${st.calls.calls.toLocaleString()} call(s)`;
+    if (st.calls.active) c += `, ${st.calls.active} up`;
+    if (st.calls.evicted) c += `, ${st.calls.evicted.toLocaleString()} aged out`;
+    bits.push(c);
+  }
+  showCallsPane();
   el.statusStore.textContent = bits.join(' · ');
 
   const parts = [];
@@ -397,7 +823,13 @@ function connect() {
   setConn('connecting', '');
   sock = new WebSocket(`${proto}//${location.host}/ws${since}`);
 
-  sock.onopen = () => { retry = 500; setConn('live', 'live'); };
+  sock.onopen = () => {
+    retry = 500;
+    setConn('live', 'live');
+    // The server does not remember a browser across a dropped socket, so the
+    // open call is announced again rather than quietly going stale.
+    tellServer();
+  };
 
   sock.onmessage = (ev) => {
     let m;
@@ -414,6 +846,24 @@ function connect() {
         break;
       case 'stats':
         showStatus(m.status || {});
+        break;
+      case 'calls':
+        applyCallUpdate(m);
+        break;
+      case 'call':
+        if (m.gone) {
+          // The call is not there any more: evicted, or the session was
+          // cleared. Saying so and showing everything again beats an empty
+          // table with a filter on it that cannot be explained.
+          if (state.callId === m.gone) {
+            notice(`call ${m.gone} is no longer held: the tool dropped it to stay within its limit`);
+            closeCall();
+          }
+        } else if (m.call && state.callId) {
+          // The id may have changed under us: two legs that turn out to be one
+          // call are merged, and the survivor is what comes back.
+          gotCall(m.call);
+        }
         break;
       case 'resync':
         // Records existed that this browser will never see, because the
@@ -463,9 +913,26 @@ el.pause.addEventListener('click', () => setPaused(!state.paused));
 el.follow.addEventListener('click', () => setFollow(!state.follow));
 el.clear.addEventListener('click', () => {
   state.all = []; state.view = []; state.held = [];
+  state.byId.clear();
   closeDetail();
   render();
 });
+
+// The call pane can be put away: on a narrow screen the table is the thing
+// being read, and the list is a second window into the same session.
+function showCallsPane() {
+  const on = state.hasIndex && el.callsToggle.classList.contains('on');
+  el.calls.hidden = !on;
+  el.callsToggle.hidden = !state.hasIndex;
+}
+el.callsToggle.addEventListener('click', () => {
+  el.callsToggle.classList.toggle('on');
+  showCallsPane();
+});
+el.callsKeepalives.addEventListener('change', renderCalls);
+el.callClose.addEventListener('click', closeCall);
+el.callCopy.addEventListener('click', copyCall);
+el.callDownload.addEventListener('click', downloadCall);
 el.detailClose.addEventListener('click', closeDetail);
 
 for (const c of [el.severity, el.kind, el.source, el.incomplete]) {
@@ -489,7 +956,11 @@ el.viewport.addEventListener('scroll', () => {
   render();
 }, { passive: true });
 
-window.addEventListener('resize', render);
+window.addEventListener('resize', () => {
+  render();
+  // The ladder is sized to the pane, so it is redrawn rather than stretched.
+  if (state.call) drawLadder(state.call.ladder);
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
@@ -497,10 +968,12 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === ' ') { e.preventDefault(); setPaused(!state.paused); }
-  else if (e.key === 'Escape') closeDetail();
+  else if (e.key === 'Escape') { if (!el.detail.hidden) closeDetail(); else closeCall(); }
+  else if (e.key === 'c' || e.key === 'C') { el.callsToggle.click(); }
   else if (e.key === '/') { e.preventDefault(); el.filter.focus(); }
   else if (e.key === 'End') { setFollow(true); }
 });
 
+showCallsPane();
 render();
 connect();

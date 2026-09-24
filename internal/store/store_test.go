@@ -358,3 +358,34 @@ func TestConcurrentAddAndRead(t *testing.T) {
 		t.Errorf("Total = %d, want 500", st.Total)
 	}
 }
+
+func TestGetFindsARecordByIDAndAdmitsWhatTheRingDropped(t *testing.T) {
+	s := New(4)
+	var ids []uint64
+	for i := 0; i < 10; i++ {
+		ids = append(ids, s.Add(rec("r1", "line", 6))[0].ID)
+	}
+	// The six oldest are gone, and Get says so rather than returning a
+	// neighbour: a call whose records have been overwritten must read as
+	// missing, not as somebody else's records.
+	for _, id := range ids[:6] {
+		if e, ok := s.Get(id); ok {
+			t.Errorf("Get(%d) returned %v; the ring overwrote it", id, e.ID)
+		}
+	}
+	for _, id := range ids[6:] {
+		e, ok := s.Get(id)
+		if !ok {
+			t.Fatalf("Get(%d) missed a record the ring still holds", id)
+		}
+		if e.ID != id {
+			t.Errorf("Get(%d) returned ID %d", id, e.ID)
+		}
+	}
+	if _, ok := s.Get(ids[len(ids)-1] + 1); ok {
+		t.Error("Get returned a record that has not been stored yet")
+	}
+	if _, ok := New(4).Get(1); ok {
+		t.Error("Get returned something from an empty store")
+	}
+}

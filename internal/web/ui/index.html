@@ -41,6 +41,7 @@
     <input id="incomplete" type="checkbox"> incomplete
   </label>
 
+  <button id="calls-toggle" class="on" title="show the call list (C)">Calls</button>
   <button id="pause" title="stop adding new records to the table (Space)">Pause</button>
   <button id="follow" class="on" title="scroll to keep the newest record in view">Follow</button>
   <button id="clear" title="empty the table in this browser">Clear</button>
@@ -48,26 +49,57 @@
 </header>
 
 <main>
-  <div id="table">
-    <div id="head" class="row head">
-      <span class="c-time">time</span>
-      <span class="c-src">source</span>
-      <span class="c-sev">sev</span>
-      <span class="c-kind">type</span>
-      <span class="c-call">call</span>
-      <span class="c-msg">message</span>
+  <aside id="calls">
+    <div id="calls-head">
+      <strong>calls</strong>
+      <label class="check" title="show the OPTIONS keepalives every dial-peer sends">
+        <input id="calls-keepalives" type="checkbox"> keepalives
+      </label>
+      <span id="calls-count" class="muted"></span>
     </div>
-    <!-- The viewport scrolls; #spacer is as tall as every row would be, and
-         only the visible slice is ever in the DOM. That is what keeps 100k+
-         records smooth. -->
-    <div id="viewport">
-      <div id="spacer"></div>
-      <div id="rows"></div>
-      <div id="empty" class="empty">
-        <p>Nothing yet.</p>
-        <p class="muted">Waiting for syslog. On the CUBE you need
-        <code>logging host &lt;this machine&gt; transport udp port 5514</code>,
-        <code>logging trap debugging</code> and <code>service sequence-numbers</code>.</p>
+    <div id="calls-list" role="list"></div>
+    <p id="calls-empty" class="empty">No calls yet.</p>
+  </aside>
+
+  <div id="centre">
+  <section id="ladder" hidden>
+    <div id="ladder-head">
+      <strong id="ladder-title">call</strong>
+      <span id="ladder-sub" class="muted"></span>
+      <span class="spacer"></span>
+      <button id="call-copy" title="copy this call's messages to the clipboard">Copy</button>
+      <button id="call-download" title="save this call's messages as a text file">Download</button>
+      <button id="call-close" title="show every record again (Esc)">&times;</button>
+    </div>
+    <div id="ladder-body"></div>
+    <!-- The SVG namespace has to be named to create an SVG element from
+         script, and it is a URL. It is taken from this element rather than
+         written as a literal, so that "does this page reference anything on
+         the network?" stays a question one grep answers. -->
+    <svg id="ns" width="0" height="0" aria-hidden="true"></svg>
+  </section>
+
+    <div id="table">
+      <div id="head" class="row head">
+        <span class="c-time">time</span>
+        <span class="c-src">source</span>
+        <span class="c-sev">sev</span>
+        <span class="c-kind">type</span>
+        <span class="c-call">call</span>
+        <span class="c-msg">message</span>
+      </div>
+      <!-- The viewport scrolls; #spacer is as tall as every row would be, and
+           only the visible slice is ever in the DOM. That is what keeps 100k+
+           records smooth. -->
+      <div id="viewport">
+        <div id="spacer"></div>
+        <div id="rows"></div>
+        <div id="empty" class="empty">
+          <p>Nothing yet.</p>
+          <p class="muted">Waiting for syslog. On the CUBE you need
+          <code>logging host &lt;this machine&gt; transport udp port 5514</code>,
+          <code>logging trap debugging</code> and <code>service sequence-numbers</code>.</p>
+        </div>
       </div>
     </div>
   </div>

@@ -64,9 +64,25 @@ if [ -f go.mod ]; then
   echo "== go test -race (concurrent packages) =="
   go test -race -count=1 \
     ./internal/live/... ./internal/store/... ./internal/ws/... \
-    ./internal/listen/... ./internal/web/... ./cmd/... || fail=1
+    ./internal/listen/... ./internal/calls/... ./internal/web/... ./cmd/... || fail=1
 else
   echo "no Go module yet — nothing to test"
+fi
+
+# The UI has no build step and no test runner, which is the point: one binary,
+# no toolchain. The cost is that a syntax error in app.js is invisible until a
+# browser silently renders nothing, so it is checked here when a JavaScript
+# engine happens to be installed. Nothing is installed to make this run, and a
+# machine without one is not a failure.
+if command -v node >/dev/null 2>&1; then
+  echo "== ui syntax =="
+  if node --check internal/web/ui/app.js; then
+    echo "ok: app.js parses"
+  else
+    fail=1
+  fi
+else
+  echo "== ui syntax == (skipped: no node on this machine)"
 fi
 
 exit "$fail"
