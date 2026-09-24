@@ -22,7 +22,11 @@ Roughly 42k of the lines are framed log/debug records; the other ~840k are the b
 lines of SIP messages (see [Line frame](#line-frame)).
 
 That makes it a good source for the **text** format and a useless one for **packetisation**.
-Everything about UDP datagram boundaries is an [open question](#open-questions).
+
+A second capture, the same day, fills that in: an Embedded Packet Capture taken on the CUBE of
+1,288 syslog datagrams carrying 66 records of one TLS SIP call. Everything about the live path —
+the frame, the counters, what one datagram holds — comes from that one and is in
+[The UDP path](#the-udp-path).
 
 The only debugs running were `debug ccsip messages` (40,903 records) and a small amount of CUBE
 voice-trace output (~500 records, see [Two devices in one file](#two-devices-in-one-file)).
@@ -354,20 +358,117 @@ Log Buffer (100000000 bytes):
 
 So the two sources are complementary, and the tool needs both, which the plan already assumes.
 
+## The UDP path
+
+Settled by a second capture, 2026-09-24: an Embedded Packet Capture on the CUBE itself, of
+1,288 syslog datagrams carrying 66 records of one TLS SIP call. Every value below is invented;
+the counts are measurements.
+
+**One datagram per line.** Not per message. The 66 records arrived as 1,288 datagrams, about 19
+lines each, and not one datagram contained a newline. This is the single most important fact
+about the live path: what the listener receives is never a SIP message, it is one line of one,
+and the reassembler is not optional.
+
+**The frame is not RFC 3164.** Not one datagram had the `MMM DD HH:MM:SS HOSTNAME TAG:` form.
+All 1,288 had this instead:
+
+```
+<191>400001: 7200001: Sep 24 12:00:00.123 UTC: //-1/A1B2C3D4E5F6/SIP/Msg/ccsipDisplayMsg:
+<191>400002: Received:
+<191>400003: INVITE sip:+449876543210@192.0.2.10:5060 SIP/2.0
+<191>400004: Via: SIP/2.0/TLS 192.0.2.20:5061;branch=z9hG4bK+1234abcd
+...
+<191>400020:
+```
+
+- `<191>` is local7 (facility 23) at severity 7, debug. 1,282 of the 1,288 were 191; the rest
+  were 190, 189 and 187 — informational, notice and error `%` lines. Severity is carried on
+  every line, and a continuation line inherits the severity of the record it belongs to.
+- **There is no hostname and no syslog-layer timestamp.** A record's time comes from its head
+  line and nothing else; a continuation line's only clock is the moment it arrives.
+- Device identity therefore comes from the **datagram's source address** and nothing in the
+  payload. § Two devices in one file says sequence continuity must be tracked per device; on
+  the live path "per device" means per source address.
+
+**Two counters, and they count different things.** This is better than the plan assumed:
+
+| | where | increments | a gap means |
+|---|---|---|---|
+| outer, after `<PRI>` | every datagram | +1 per **line** | lines lost, exactly countable |
+| inner, on record heads only | record heads | +1 per **record** | whole records lost |
+
+In the capture the outer counter ran unbroken across all 1,288 datagrams, and the inner across
+all 66 records — no loss, no reordering. Because the outer counter covers every line, a receiver
+can say not just that something was lost but *how much and where inside which message*, which is
+what makes a half-received SIP message safe to show as incomplete rather than wrong.
+
+**No fragmentation and no truncation, and the reason matters.** No IP fragment appeared, and the
+largest payload was 214 bytes against a longest-line-ever of 453 bytes in the terminal capture.
+The earlier worry — that a quarter of SIP messages exceed 1024 bytes and 7.6% exceed 1472 — is
+void, because a message never travels as a unit. Lines do, and lines are small. Nothing here
+approaches an MTU or an IOS datagram cap.
+
+**Line endings.** 1,162 of 1,288 payloads ended with a bare CR, 126 with nothing at all. No LF
+anywhere, and no CRLF. Strip one optional trailing CR; never require it.
+
+**What reassembly has to do.**
+
+1. Sort by the outer counter, not by arrival. UDP may reorder even though this capture did not.
+2. A record starts at a head line (`<seq>: <seq>: <timestamp>: ` followed by `//` or `%`) and
+   runs until the next head line. Between two heads in this capture, every line belonged to the
+   first record: records were emitted atomically, so no interleaving was observed — at one call
+   and low load. Under concurrency it is unproven, which is question 1 below. Attributing lines
+   by the head that precedes them in *sequence* order rather than in arrival order is correct
+   either way.
+3. An empty line is a real datagram (65 of them here), and it is what separates SIP headers from
+   the body. Do not discard empty payloads.
+4. A message is complete when the bytes after its blank line match its `Content-Length`. That is
+   also the check that detects a message with lines missing in the middle.
+
 ## Open questions
 
-These need a capture nobody has made yet. None of them blocks the parser, because the text format
-above is the same on both paths.
+Questions 1-3 of the first draft — packetisation, truncation and the frame layout — are closed
+by § The UDP path. What is left needs captures nobody has made yet, and none of it blocks the
+parser.
 
-### The capture that would close 1-3, and what it cannot close
+1. **Interleaving under concurrent calls.** In the UDP capture every line between two record
+   heads belonged to the first record: records were emitted atomically. That was one call at low
+   load. Two calls setting up in the same millisecond may interleave at line granularity, and the
+   reassembler has to be written so that it would notice. Needs a capture of overlapping calls.
+2. **Which gaps are the rate limiter and which are the network.** A gap in the outer counter has
+   two causes: the router dropping a message before transmitting it (rate limiting and overruns
+   — this box has done both, § What syslog loses) and loss in transit. Whether a rate-limited
+   message consumes a sequence number before it is dropped is not known, and it decides
+   everything: if it does, a gap appears at the sender too and the two causes are separable by
+   comparing a sender-side and a receiver-side capture; if it does not, a rate-limited message is
+   invisible and no gap analysis can ever see it. The UDP capture had no drops, so it could not
+   say. **Until this is settled the UI says "lost or rate-limited", not "lost"** — telling an
+   engineer they have a network problem while their router throttles its own logging sends them
+   looking in the wrong place.
+3. **GUID uniqueness.** Is the 13-17-legs-per-GUID observation a truncation collision, or real
+   CUBE behaviour (call forking, rollover to a second dial-peer)? A lab capture of two calls
+   started in the same second would settle it, as would one capture of a known REFER transfer.
+4. **Scenario coverage.** The terminal capture is whatever production was doing and the UDP
+   capture is one call. Not represented, and all wanted per the plan's scenario list: a deliberate
+   busy/404/503 failure, hold and resume, a REFER transfer, and a few genuinely idle minutes.
+   There were only 8 REFERs and no `debug voip ccapi inout` at all, so call-control lines are
+   undocumented here.
+5. **`Peer-CallID` and `Correlator`** were `NA` in every Cover Buffer block. When are they
+   populated, and does `Peer-CallID` give a leg-to-leg link better than the GUID?
+6. **The second device on the live path.** The terminal capture held two CUBEs in disjoint
+   sequence spaces; the UDP capture had one source address. That the live path separates devices
+   by source address is inference from a one-device capture, not an observation of two.
 
-The machine that will run cube-logger is not in the CUBE's network, so the pcap will be an
-Embedded Packet Capture on the router itself, exported off the box. Three settings have to be in
-place first or the capture is worthless: a routable `logging host <collector> transport udp port
-5514`, `logging trap debugging` (at the `informational` level this box runs, the capture would
-contain no debug line at all, per point 1 above), and `service sequence-numbers`. The collector
-needs nothing listening on it — UDP is fire-and-forget — but it must be routable and
-ARP-resolvable, or the datagrams never reach the wire.
+### How the UDP capture was taken
+
+Kept because the next one will be taken the same way. The collector cannot sit in the CUBE's
+network, so it was an Embedded Packet Capture on the router, exported off the box. Three settings
+have to be in place first or the capture is worthless: a routable
+`logging host <collector> transport udp port 5514`, `logging trap debugging` (at the
+`informational` level this box ships with, the capture contains no debug line at all, § What
+syslog loses point 1), and `service sequence-numbers`. The collector needs nothing listening on
+it — UDP is fire-and-forget — but it must be routable and ARP-resolvable, or the datagrams never
+reach the wire.
 
 ```
 ip access-list extended CAP-SYSLOG
@@ -376,44 +477,7 @@ ip access-list extended CAP-SYSLOG
 monitor capture CAP access-list CAP-SYSLOG interface <interface> out
 ```
 
-Taken at the sender, that settles questions 1-3: one datagram per message or one per line,
-whether messages over ~1472 bytes come out IP-fragmented, whether a payload is cut short of its
-own `Content-Length`, and whether every datagram repeats the `<PRI>`, timestamp, hostname and
-sequence number. Worth sizing the expectation: of the 41,007 SIP messages in this capture the
-median is 593 bytes, but 10,320 (25%) exceed 1024 bytes and 3,100 (7.6%) exceed 1472, so the
-question is not academic.
-
-What a sender-side capture cannot settle is **loss**, and that is question 7 below.
-
-1. **UDP packetisation — the whole of it.** The capture is a terminal session, so it cannot show:
-   how CUBE splits a multi-line SIP message across datagrams (one datagram per message, or one
-   per line?); whether each datagram repeats the RFC 3164 `<PRI>` header, timestamp and hostname,
-   or only the first; and what the PRI/facility value actually is. **This is the one phase-0
-   question that is still open**, and it decides how the listener reassembles. Needs
-   `tcpdump -w <scenario>.pcap udp port 5514` while a call runs.
-2. **Truncation on the UDP path.** Nothing was truncated over the terminal. IOS-XE is reported to
-   cap a syslog datagram (~1024 or ~1500 bytes); a SIP INVITE with SDP exceeds that. Whether CUBE
-   splits or truncates is unknown, and it is the difference between a usable ladder diagram and a
-   broken one. The `Content-Length` check in this document is the test to re-run against a pcap.
-3. **Interleaving on the UDP path.** Atomic per message here. Under load, with two calls setting
-   up in the same millisecond, datagrams may arrive interleaved or out of order. The reassembler
-   should be written so this is detectable.
-4. **GUID uniqueness.** Is the 13–17-legs-per-GUID observation a truncation collision, or a real
-   CUBE behaviour (call forking, rollover to a second dial-peer)? A lab capture of two calls
-   started in the same second would settle it, as would one capture of a known REFER transfer.
-5. **Scenario coverage.** This capture is whatever production was doing. Not represented, and all
-   wanted per the plan's scenario list: a deliberate busy/404/503 failure, hold and resume, a
-   REFER transfer, and a few genuinely idle minutes. There were only 8 REFERs and no
-   `debug voip ccapi inout` at all, so call-control lines are undocumented here.
-6. **`Peer-CallID` and `Correlator`** were `NA` in every Cover Buffer block. When are they
-   populated, and does `Peer-CallID` give a leg-to-leg link better than the GUID?
-
-7. **Which gaps are the rate limiter and which are the network.** A gap in sequence numbers has
-   two causes on the UDP path: the router dropping a message before it is ever transmitted
-   (rate limiting and overruns — this box has done both, § What syslog loses) and loss in
-   transit. A capture at the sender shows only the first: a message the rate limiter ate is
-   missing from the wire, so its sequence number is missing from the pcap. A capture at the
-   receiver shows both together and cannot tell them apart. Only the two captures compared
-   separate the causes. Until a receiver-side capture exists, the UI must say a gap means
-   **lost or rate-limited**, not lost — telling an engineer they have a network problem when
-   their router is throttling its own logging would send them looking in the wrong place.
+One caution learned the hard way: the capture that answered these questions was taken without the
+access list in force, so it also contains the call's RTP — real audio — along with unrelated TCP
+and ICMP. Raw captures are gitignored, but the narrower the capture the less there is to be
+careful with.
