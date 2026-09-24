@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Locally-installed third-party skills (e.g. via `npx skills add`) — kept local, not published
+.claude/skills/
+.agents/
+skills-lock.json
