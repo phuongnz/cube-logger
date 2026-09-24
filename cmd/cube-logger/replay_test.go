@@ -14,6 +14,7 @@ import (
 	"github.com/phuongnz/cube-logger/internal/calls"
 	"github.com/phuongnz/cube-logger/internal/listen"
 	"github.com/phuongnz/cube-logger/internal/live"
+	"github.com/phuongnz/cube-logger/internal/session"
 	"github.com/phuongnz/cube-logger/internal/store"
 	"github.com/phuongnz/cube-logger/internal/web"
 )
@@ -113,7 +114,11 @@ type receiver struct {
 	waits sync.WaitGroup
 }
 
-func startReceiver(t *testing.T) *receiver {
+func startReceiver(t *testing.T) *receiver { return startReceiverSaving(t, nil) }
+
+// startReceiverSaving is the same, writing every record to a session file as
+// it arrives when sw is not nil.
+func startReceiverSaving(t *testing.T, sw *session.Writer) *receiver {
 	t.Helper()
 	ln, err := listen.Open("127.0.0.1:0", nil)
 	if err != nil {
@@ -123,7 +128,7 @@ func startReceiver(t *testing.T) *receiver {
 	re.Year = 2026
 	st := store.New(1000)
 	ix := calls.New(0)
-	add := &feeder{st: st, ix: ix}
+	add := &feeder{st: st, ix: ix, sw: sw}
 	srv := &web.Server{Store: st, Live: re, Listener: ln, Calls: ix, Title: "test"}
 	if err := web.Open("127.0.0.1:0", srv); err != nil {
 		t.Fatal(err)
