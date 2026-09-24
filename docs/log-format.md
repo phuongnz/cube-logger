@@ -425,6 +425,54 @@ anywhere, and no CRLF. Strip one optional trailing CR; never require it.
 4. A message is complete when the bytes after its blank line match its `Content-Length`. That is
    also the check that detects a message with lines missing in the middle.
 
+## What a file adds in front of the line
+
+A CUBE line reaches a file by one of several routes, and each route puts its own framing in
+front of the line the device emitted. The tool peels that off and hands `internal/parse` the
+same IOS line either way, so the views do not have to know where a record came from.
+
+| What wrote it | What the line looks like |
+| --- | --- |
+| A terminal capture of `show logging` | `400020: Sep 24 10:00:01.123: %SIP-5-…` |
+| A saved datagram dump | `<191>400020: Sep 24 10:00:01.123: %SIP-5-…` |
+| A syslog server writing RFC 3164 | `Sep 24 10:00:01 cube-a 400020: Sep 24 …` |
+| rsyslog's file format, syslog-ng's ISO template | `2026-09-24T10:00:01+02:00 cube-a 400020: …` |
+| RFC 5424 | `<191>1 2026-09-24T10:00:01Z cube-a - - - 400020: …` |
+| Kiwi's tab-separated file | `2026-09-24⇥10:00:01⇥Local7.Debug⇥cube-a⇥400020: …` |
+
+Three things make this safe to do by shape alone, and all three matter:
+
+- **The IOS frame wins.** A line that already starts with `<seq>: <Mon DD HH:MM:SS.mmm>: ` had
+  nothing put in front of it, and nothing is taken off.
+- **A peel has to leave something plausible behind.** A foreign framing is only recognised when
+  what remains is itself an IOS frame, a `%FACILITY-n-MNEMONIC` log line or a `//call/guid/…`
+  debug header. A SIP body can contain any shape at all, including something that reads like a
+  timestamp and a hostname.
+- **A file is locked to one format.** Once a file has shown which framing it uses, only that one
+  is tried, so a capture of a terminal session is never "corrected". The one exception is a
+  syslog priority — `<191>` — which an IOS line never starts with, so that is peeled wherever it
+  appears and a concatenation of a dump and a paste still reads.
+
+The framing also carries two things the IOS line does not repeat: the **device** (a hostname or
+an address, where a terminal capture has only the prompt to go on) and the **severity**, which
+is otherwise only knowable for `%`-tagged log lines.
+
+### The `show logging` preamble
+
+`show logging` prints a page of configuration before the buffer, ending at `Log Buffer (N
+bytes):`. It is not log content and does not belong in the table, but it is worth keeping: it is
+the first thing to read when the debug output someone expected is not in the file — it says the
+trap level, what was rate-limited and what was dropped. It is recognised only in the preamble:
+before the first record, or straight after this device's own prompt. The prompt line itself
+(`cube-a#show logging`) is the only place a terminal capture names the router.
+
+### A device with no timestamps
+
+`no service timestamps` leaves a line the parser cannot frame at all. When a syslog server
+timestamped it on arrival, the frame is rebuilt from the server's clock — but only for a line
+that would start a record, because giving every line its own frame would turn one SIP message
+into nineteen records. The times are then the server's, not the router's, and the tool says so.
+
 ## Open questions
 
 Questions 1-3 of the first draft — packetisation, truncation and the frame layout — are closed
@@ -458,6 +506,12 @@ parser.
 6. **The second device on the live path.** The terminal capture held two CUBEs in disjoint
    sequence spaces; the UDP capture had one source address. That the live path separates devices
    by source address is inference from a one-device capture, not an observation of two.
+7. **The third-party file formats are written from the specifications, not from files.** Nobody
+   has yet pointed a CUBE at rsyslog, syslog-ng or Kiwi and kept what came out. The framings in
+   § What a file adds in front of the line are what those servers document themselves as
+   writing, and the fixtures under `testdata/files/` were written by hand to match. A real file
+   from each would either confirm them or show a template option nobody thought of; the reader
+   is built so that an unrecognised prefix costs a line, not a file.
 
 ### How the UDP capture was taken
 
