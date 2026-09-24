@@ -346,12 +346,44 @@ Log Buffer (100000000 bytes):
    or arrived there, and it is a snapshot — anything older than the buffer is gone. Live syslog is
    the only path that sees a record at the moment it happens.
 
+5. **No syslog destination is configured on this box.** The `Logging Source-Interface:` /
+   `VRF Name:` line is empty and no `Logging to <host>` entries follow it. Nothing has ever been
+   sent over UDP from this router, so the absence of evidence about the UDP path below is not a
+   gap in the analysis — there is no data to analyse, and there will not be until someone
+   configures a destination and captures the result.
+
 So the two sources are complementary, and the tool needs both, which the plan already assumes.
 
 ## Open questions
 
 These need a capture nobody has made yet. None of them blocks the parser, because the text format
 above is the same on both paths.
+
+### The capture that would close 1-3, and what it cannot close
+
+The machine that will run cube-logger is not in the CUBE's network, so the pcap will be an
+Embedded Packet Capture on the router itself, exported off the box. Three settings have to be in
+place first or the capture is worthless: a routable `logging host <collector> transport udp port
+5514`, `logging trap debugging` (at the `informational` level this box runs, the capture would
+contain no debug line at all, per point 1 above), and `service sequence-numbers`. The collector
+needs nothing listening on it — UDP is fire-and-forget — but it must be routable and
+ARP-resolvable, or the datagrams never reach the wire.
+
+```
+ip access-list extended CAP-SYSLOG
+ permit udp any host <collector> eq 5514
+!
+monitor capture CAP access-list CAP-SYSLOG interface <interface> out
+```
+
+Taken at the sender, that settles questions 1-3: one datagram per message or one per line,
+whether messages over ~1472 bytes come out IP-fragmented, whether a payload is cut short of its
+own `Content-Length`, and whether every datagram repeats the `<PRI>`, timestamp, hostname and
+sequence number. Worth sizing the expectation: of the 41,007 SIP messages in this capture the
+median is 593 bytes, but 10,320 (25%) exceed 1024 bytes and 3,100 (7.6%) exceed 1472, so the
+question is not academic.
+
+What a sender-side capture cannot settle is **loss**, and that is question 7 below.
 
 1. **UDP packetisation — the whole of it.** The capture is a terminal session, so it cannot show:
    how CUBE splits a multi-line SIP message across datagrams (one datagram per message, or one
@@ -375,3 +407,13 @@ above is the same on both paths.
    `debug voip ccapi inout` at all, so call-control lines are undocumented here.
 6. **`Peer-CallID` and `Correlator`** were `NA` in every Cover Buffer block. When are they
    populated, and does `Peer-CallID` give a leg-to-leg link better than the GUID?
+
+7. **Which gaps are the rate limiter and which are the network.** A gap in sequence numbers has
+   two causes on the UDP path: the router dropping a message before it is ever transmitted
+   (rate limiting and overruns — this box has done both, § What syslog loses) and loss in
+   transit. A capture at the sender shows only the first: a message the rate limiter ate is
+   missing from the wire, so its sequence number is missing from the pcap. A capture at the
+   receiver shows both together and cannot tell them apart. Only the two captures compared
+   separate the causes. Until a receiver-side capture exists, the UI must say a gap means
+   **lost or rate-limited**, not lost — telling an engineer they have a network problem when
+   their router is throttling its own logging would send them looking in the wrong place.
