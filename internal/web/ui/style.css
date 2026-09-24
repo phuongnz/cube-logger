@@ -1,0 +1,205 @@
+/* One screen of monospaced rows. The colours carry meaning and are the first
+   thing an engineer reads, so they are few and consistent: severity colours
+   the severity cell, the record type colours the row, and anything wrong with
+   a record — lines missing, a short body — is red on the left edge. */
+
+:root {
+  --bg: #12151a;
+  --bg-alt: #171b22;
+  --bg-head: #1d222b;
+  --fg: #d6dbe4;
+  --muted: #7d8795;
+  --line: #262c36;
+  --accent: #5aa9e6;
+
+  --sip-in: #7bd88f;
+  --sip-out: #74b9ff;
+  --debug: #b9a5e3;
+  --log: #d6dbe4;
+  --other: #8a93a0;
+
+  --sev-emerg: #ff5f5f;
+  --sev-alert: #ff7a5f;
+  --sev-crit: #ff8f5f;
+  --sev-err: #ff9f43;
+  --sev-warn: #ffd34d;
+  --sev-notice: #8fd4ff;
+  --sev-info: #9aa5b1;
+  --sev-debug: #6f7b8a;
+
+  --bad: #ff5f5f;
+  --row-h: 22px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff; --bg-alt: #f6f8fa; --bg-head: #eef1f5;
+    --fg: #1c2128; --muted: #5a6572; --line: #d8dee6;
+    --sip-in: #1a7f37; --sip-out: #0969da; --debug: #6639ba; --log: #1c2128;
+    --other: #6e7781;
+    --sev-emerg: #b3001b; --sev-alert: #c0392b; --sev-crit: #cf4520;
+    --sev-err: #b35309; --sev-warn: #8a6d00; --sev-notice: #0550ae;
+    --sev-info: #57606a; --sev-debug: #8c959f;
+    --bad: #b3001b;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; height: 100%;
+  background: var(--bg); color: var(--fg);
+  font: 13px/1.4 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+body { display: flex; flex-direction: column; }
+
+/* ---- top bar ---- */
+
+#bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-head);
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto; flex-wrap: wrap;
+}
+
+#brand { font-weight: 700; letter-spacing: .02em; }
+
+#filter { flex: 1 1 260px; min-width: 180px; }
+
+input, select, button {
+  font: inherit;
+  color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 7px;
+}
+
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.on { background: var(--accent); border-color: var(--accent); color: #06121c; font-weight: 600; }
+
+.check { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.muted { color: var(--muted); }
+
+.pill {
+  padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.pill.live { color: var(--sip-in); border-color: var(--sip-in); }
+.pill.down { color: var(--bad); border-color: var(--bad); }
+
+/* ---- layout ---- */
+
+main { flex: 1 1 auto; display: flex; min-height: 0; }
+#table { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+
+#viewport { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; position: relative; }
+#spacer { width: 1px; }
+#rows { position: absolute; top: 0; left: 0; right: 0; }
+
+/* ---- rows ---- */
+
+.row {
+  display: flex; align-items: baseline; gap: 10px;
+  height: var(--row-h); line-height: var(--row-h);
+  padding: 0 10px;
+  white-space: nowrap; overflow: hidden;
+  border-left: 3px solid transparent;
+}
+
+.row.head {
+  background: var(--bg-head);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted); text-transform: uppercase; font-size: 11px;
+  letter-spacing: .06em; flex: 0 0 auto;
+}
+
+#rows .row:nth-child(even) { background: var(--bg-alt); }
+#rows .row:hover { background: var(--line); cursor: default; }
+#rows .row.sel { background: var(--line); border-left-color: var(--accent); }
+
+.c-time { flex: 0 0 96px; color: var(--muted); }
+.c-src  { flex: 0 0 116px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.c-sev  { flex: 0 0 52px; }
+.c-kind { flex: 0 0 60px; color: var(--muted); }
+.c-call { flex: 0 0 132px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.c-msg  { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+
+/* The row type colours the message, which is the part being read. */
+.k-sip-received .c-msg { color: var(--sip-in); }
+.k-sip-sent     .c-msg { color: var(--sip-out); }
+.k-debug        .c-msg { color: var(--debug); }
+.k-log          .c-msg { color: var(--log); }
+.k-other        .c-msg { color: var(--other); }
+.k-cover        .c-msg { color: var(--accent); }
+
+/* Severity colours only the severity cell, so the two scales never fight. */
+.s0 { color: var(--sev-emerg); font-weight: 700; }
+.s1 { color: var(--sev-alert); font-weight: 700; }
+.s2 { color: var(--sev-crit); font-weight: 700; }
+.s3 { color: var(--sev-err); font-weight: 700; }
+.s4 { color: var(--sev-warn); }
+.s5 { color: var(--sev-notice); }
+.s6 { color: var(--sev-info); }
+.s7 { color: var(--sev-debug); }
+
+/* A record that is missing lines, and a failure the router named itself. */
+.row.incomplete { border-left-color: var(--bad); }
+.row.incomplete .c-msg::after {
+  content: " ⚠ incomplete";
+  color: var(--bad); font-weight: 600;
+}
+.row.failed .c-msg { color: var(--sev-err); }
+
+/* A notice row: a gap in the numbering, or the ring overwriting records. */
+.row.notice {
+  border-left-color: var(--sev-warn);
+  color: var(--sev-warn);
+  background: color-mix(in srgb, var(--sev-warn) 10%, transparent);
+}
+.row.notice .c-msg { color: var(--sev-warn); }
+
+.empty { padding: 40px 20px; color: var(--muted); max-width: 640px; }
+.empty code {
+  background: var(--bg-alt); padding: 1px 5px; border-radius: 3px;
+  border: 1px solid var(--line); white-space: nowrap;
+}
+
+/* ---- detail pane ---- */
+
+#detail {
+  flex: 0 0 46%; max-width: 46%; min-width: 320px;
+  display: flex; flex-direction: column;
+  border-left: 1px solid var(--line); background: var(--bg-alt);
+}
+#detail[hidden] { display: none; }
+
+#detail-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--bg-head);
+}
+#detail-close { border: none; background: none; font-size: 18px; line-height: 1; color: var(--muted); }
+
+#detail-meta { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted); }
+#detail-meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; }
+#detail-meta dt { color: var(--muted); }
+#detail-meta dd { margin: 0; color: var(--fg); word-break: break-all; }
+#detail-meta .warn { color: var(--bad); grid-column: 1 / -1; }
+
+#detail-raw {
+  margin: 0; padding: 10px; overflow: auto; flex: 1 1 auto;
+  white-space: pre-wrap; word-break: break-word; font: inherit;
+}
+
+/* ---- status bar ---- */
+
+#status {
+  flex: 0 0 auto;
+  display: flex; gap: 18px; flex-wrap: wrap;
+  padding: 4px 10px;
+  background: var(--bg-head); border-top: 1px solid var(--line);
+  font-size: 12px; color: var(--muted);
+}
+#status .src { color: var(--fg); }
+#status .lost { color: var(--sev-warn); }

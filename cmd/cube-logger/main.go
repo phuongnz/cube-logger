@@ -1,9 +1,10 @@
-// Command cube-logger is, for now, the core of the tool with a command line
-// around it: it parses a saved CUBE log and prints the records and the calls it
-// found, and it sanitizes a raw capture into a fixture that is safe to commit.
+// Command cube-logger is a live syslog and debug viewer for Cisco CUBE.
 //
-// The listener, the store and the web UI come later. Everything they will need
-// is already here, because the parser and the correlator do no I/O.
+// "live" listens for syslog datagrams, reassembles them into records and serves
+// a table of them to a browser on this machine. "replay" sends a saved log to
+// that listener one datagram per line, which is how the live path is exercised
+// without a router. "parse" reads a saved log offline, and "sanitize" rewrites
+// a capture into something safe to commit.
 package main
 
 import (
@@ -31,6 +32,10 @@ func main() {
 		err = parseCmd(os.Args[2:])
 	case "sanitize":
 		err = sanitizeCmd(os.Args[2:])
+	case "live":
+		err = liveCmd(os.Args[2:])
+	case "replay":
+		err = replayCmd(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -48,6 +53,8 @@ func usage() {
 	fmt.Fprint(os.Stderr, `cube-logger — a live syslog and debug viewer for Cisco CUBE
 
 usage:
+  cube-logger live [flags]              listen for syslog and open a live view in a browser
+  cube-logger replay [flags] <file>     send a saved log to a listener, one datagram per line
   cube-logger parse [flags] <file>      parse a saved log and print records and calls
   cube-logger sanitize [flags] <file>   rewrite a capture so it is safe to commit
 

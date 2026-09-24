@@ -37,11 +37,34 @@ if [ -f go.mod ]; then
   echo "== go vet =="
   go vet ./... || fail=1
 
+  # The tool is meant to stay a single binary that go:embed can ship and that
+  # needs no toolchain to build. Every dependency past the standard library is a
+  # decision worth making on purpose, so an accidental one has to fail here.
+  echo "== no external dependencies =="
+  deps=$(go list -deps -f '{{if and .Module (not .Standard)}}{{.Module.Path}}{{end}}' ./... \
+    | grep -v '^github.com/phuongnz/cube-logger$' | sort -u || true)
+  if [ -n "$deps" ]; then
+    echo "FAIL: the module depends on something outside the standard library:" >&2
+    echo "$deps" >&2
+    fail=1
+  else
+    echo "ok: standard library only"
+  fi
+
   # The test suite carries its own safety net: TestFixturesAreSafeToPublish in
   # internal/sanitize walks testdata/ and rejects any address or domain that is
   # not from a reserved range. Fixtures are committed to a public repository.
   echo "== go test =="
   go test ./... || fail=1
+
+  # The live path is several goroutines around one reassembler, one ring buffer
+  # and one hijacked socket. A data race there shows up as a record that is
+  # occasionally wrong, which is the hardest kind of bug to be told about, so
+  # the concurrent packages are run under the race detector on every checkpoint.
+  echo "== go test -race (concurrent packages) =="
+  go test -race -count=1 \
+    ./internal/live/... ./internal/store/... ./internal/ws/... \
+    ./internal/listen/... ./internal/web/... ./cmd/... || fail=1
 else
   echo "no Go module yet — nothing to test"
 fi

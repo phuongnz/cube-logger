@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Nothing is loaded from anywhere. The tool is local-only and sends nothing
+     out, and a UI that fetched a font from a CDN would quietly break that. -->
+<title>cube-logger</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+
+<header id="bar">
+  <span id="brand">cube-logger</span>
+  <span id="conn" class="pill" title="connection to the local server">connecting</span>
+
+  <input id="filter" type="search" placeholder="filter text — number, Call-ID, header, anything"
+         autocomplete="off" spellcheck="false">
+
+  <select id="severity" title="keep this severity and everything more urgent">
+    <option value="-1">all severities</option>
+    <option value="3">error and worse</option>
+    <option value="4">warning and worse</option>
+    <option value="5">notice and worse</option>
+    <option value="6">informational and worse</option>
+    <option value="7">debug and worse</option>
+  </select>
+
+  <select id="kind" title="record type">
+    <option value="">all types</option>
+    <option value="sip">SIP messages</option>
+    <option value="debug">debug</option>
+    <option value="log">% log lines</option>
+    <option value="other">other</option>
+  </select>
+
+  <select id="source" title="device"><option value="">all devices</option></select>
+
+  <label class="check" title="only records with lines missing">
+    <input id="incomplete" type="checkbox"> incomplete
+  </label>
+
+  <button id="pause" title="stop adding new records to the table (Space)">Pause</button>
+  <button id="follow" class="on" title="scroll to keep the newest record in view">Follow</button>
+  <button id="clear" title="empty the table in this browser">Clear</button>
+  <span id="count" class="muted"></span>
+</header>
+
+<main>
+  <div id="table">
+    <div id="head" class="row head">
+      <span class="c-time">time</span>
+      <span class="c-src">source</span>
+      <span class="c-sev">sev</span>
+      <span class="c-kind">type</span>
+      <span class="c-call">call</span>
+      <span class="c-msg">message</span>
+    </div>
+    <!-- The viewport scrolls; #spacer is as tall as every row would be, and
+         only the visible slice is ever in the DOM. That is what keeps 100k+
+         records smooth. -->
+    <div id="viewport">
+      <div id="spacer"></div>
+      <div id="rows"></div>
+      <div id="empty" class="empty">
+        <p>Nothing yet.</p>
+        <p class="muted">Waiting for syslog. On the CUBE you need
+        <code>logging host &lt;this machine&gt; transport udp port 5514</code>,
+        <code>logging trap debugging</code> and <code>service sequence-numbers</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <aside id="detail" hidden>
+    <div id="detail-head">
+      <strong id="detail-title">record</strong>
+      <button id="detail-close" title="close (Esc)">&times;</button>
+    </div>
+    <div id="detail-meta"></div>
+    <pre id="detail-raw"></pre>
+  </aside>
+</main>
+
+<footer id="status">
+  <span id="status-store" class="muted"></span>
+  <span id="status-sources"></span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

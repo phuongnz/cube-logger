@@ -119,6 +119,13 @@ type Record struct {
 	// silently as whole when it is not.
 	Incomplete bool `json:"incomplete,omitempty"`
 
+	// RawLines is every line of the record verbatim. parse.Record.Raw is kept
+	// out of JSON because the golden files would double in size, but the
+	// browser has nothing else to show in a detail pane: the whole point of
+	// the tool is reading what the router actually said. Same backing slice,
+	// not a copy.
+	RawLines []string `json:"raw,omitempty"`
+
 	// Call is this record's own leg identity, for the table's call column and
 	// its filter: the IOS call entry ID when the record carries one, else the
 	// debug GUID, else the SIP Call-ID.
@@ -579,6 +586,7 @@ func (s *stream) finish(pr *parse.Record) *Record {
 		HasLineSeq:   a.hasSeq,
 		Lines:        a.lines,
 		MissingLines: a.missing,
+		RawLines:     pr.Raw,
 	}
 	if a.received.IsZero() {
 		r.Received = a.lastArrival
