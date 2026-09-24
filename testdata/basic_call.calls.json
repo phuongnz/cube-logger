@@ -1,0 +1,73 @@
+{
+  "calls": [
+    {
+      "id": "call-1",
+      "guid": "0A8B2C00000B",
+      "calling": "+449876543210",
+      "called": "+441234567890",
+      "start": "2026-09-24T10:14:20.64Z",
+      "end": "2026-09-24T10:15:02.404Z",
+      "state": "ended",
+      "result": "BYE",
+      "cause": "Q.850;cause=16",
+      "legs": [
+        {
+          "id": "leg-1",
+          "source": "basic_call.txt",
+          "callEntryId": 2540661,
+          "guid": "0A8B2C00000B",
+          "sipCallIds": [
+            "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5"
+          ],
+          "direction": "inbound",
+          "calling": "+449876543210",
+          "called": "+441234567890",
+          "start": "2026-09-24T10:14:20.64Z",
+          "end": "2026-09-24T10:15:02.34Z",
+          "state": "ended",
+          "finalStatus": 200,
+          "finalReason": "OK",
+          "disconnect": "BYE",
+          "cause": "Q.850;cause=16",
+          "records": [
+            0,
+            1,
+            5,
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "id": "leg-2",
+          "source": "basic_call.txt",
+          "callEntryId": 2540662,
+          "guid": "0A8B2C00000B",
+          "sipCallIds": [
+            "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1"
+          ],
+          "direction": "outbound",
+          "calling": "+449876543210",
+          "called": "+441234567890",
+          "start": "2026-09-24T10:14:20.712Z",
+          "end": "2026-09-24T10:15:02.404Z",
+          "state": "ended",
+          "finalStatus": 200,
+          "finalReason": "OK",
+          "disconnect": "BYE",
+          "cause": "Q.850;cause=16",
+          "records": [
+            2,
+            3,
+            4,
+            6,
+            7,
+            12,
+            13
+          ]
+        }
+      ]
+    }
+  ]
+}

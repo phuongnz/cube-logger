@@ -1,0 +1,51 @@
+! Every value in this file is invented. It is the sanitizer's own input fixture:
+! it has to look like a capture so the rules fire, so it is written to contain
+! "sensitive" data that never existed.
+123456: Sep 24 09:14:02.113: //2540661/A1B2C3D4E5F6/SIP/Msg/ccsipDisplayMsg:
+Received:
+INVITE sip:+441632960123@pbx.corp.example.com:5060 SIP/2.0
+Via: SIP/2.0/UDP 203.0.113.17:5060;branch=z9hG4bK1a2b3c
+From: "Alice Fictional" <sip:alice.fictional@voice.corp.example.com>;tag=A11
+To: <sip:+441632960123@pbx.corp.example.com>
+Call-ID: 9f8e7d6c5b4a@203.0.113.17
+CSeq: 101 INVITE
+Contact: <sip:alice.fictional@203.0.113.17:5060>
+Authorization: Digest username="alice.fictional",realm="corp.example.com",nonce="deadbeefcafe",response="0123456789abcdef0123456789abcdef"
+Proxy-Authorization: Digest username="trunk-svc",realm="carrier.example.org",response="fedcba9876543210fedcba9876543210"
+Max-Forwards: 70
+Expires: 300
+Remote-Party-ID: "Alice Fictional" <sip:00441632960999@voice.corp.example.com>;party=calling
+Content-Length: 134
+
+v=0
+o=CiscoSystemsSIP-GW-UserAgent 1234 5678 IN IP4 198.51.100.9
+s=SIP Call
+c=IN IP4 198.51.100.9
+t=0 0
+m=audio 17654 RTP/AVP 8
+
+123457: Sep 24 09:14:02.140: //2540661/A1B2C3D4E5F6/SIP/Msg/ccsipDisplayMsg:
+Sent:
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 203.0.113.17:5060;branch=z9hG4bK1a2b3c
+From: "Alice Fictional" <sip:alice.fictional@voice.corp.example.com>;tag=A11
+To: <sip:+441632960123@pbx.corp.example.com>;tag=B22
+Call-ID: 9f8e7d6c5b4a@203.0.113.17
+CSeq: 101 INVITE
+Content-Length: 0
+
+123458: Sep 24 09:14:02.190: //2540662/A1B2C3D4E5F6/CCAPI/cc_api_call_setup_ind: peer 203.0.113.17 dst +441632960123 src 00441632960999
+123459: Sep 24 09:14:03.001: %VOICE_IEC-3-GW: SIP: Internal Error (Received 503): IEC=1.1.180.1.29.0 on callID 2540661 GUID=A1B2C3D4E5F6
+123460: Sep 24 09:14:03.010: //2540661/A1B2C3D4E5F6/
+------------------ Cover Buffer ---------------
+Search-key       = 00441632960999:+441632960123:2540661
+  Timestamp      = Sep 24 09:14:02.113
+  CallID         = 2540661
+  Called-Number  = +441632960123
+  Calling-Number = 00441632960999
+  SIP CallID     = 9f8e7d6c5b4a@203.0.113.17
+  Peer-Address   = 2001:db8:dead:beef::17
+  GUID           = A1B2C3D4E5F6
+  Tenant         = NA
+123461: Sep 24 09:14:03.020: cube-edge-01#show logging
+123462: Sep 24 09:14:03.030: //-1/xxxxxxxxxxxx/SIP/Info: keepalive to sbc.carrier.example.org (198.51.100.9), internal 10.20.30.40, loopback 127.0.0.1

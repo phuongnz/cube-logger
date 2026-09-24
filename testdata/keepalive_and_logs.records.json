@@ -1,0 +1,165 @@
+{
+  "source": "keepalive_and_logs.txt",
+  "records": [
+    {
+      "source": "keepalive_and_logs.txt",
+      "line": 1,
+      "seq": 5967201,
+      "hasSeq": true,
+      "time": "2026-09-24T10:30:00.004Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": -1,
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "OPTIONS sip:192.0.2.10:5060 SIP/2.0",
+        "method": "OPTIONS",
+        "requestUri": "sip:192.0.2.10:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKB2C3D4E5F6",
+          "From: \u003csip:10.0.0.1\u003e;tag=99AABBCC-DDD",
+          "To: \u003csip:192.0.2.10\u003e",
+          "Call-ID: 4E5F6071-1@10.0.0.1:5060",
+          "CSeq: 954514406 OPTIONS",
+          "Max-Forwards: 70",
+          "Content-Length: 0"
+        ],
+        "callId": "4E5F6071-1@10.0.0.1:5060",
+        "cseqNum": 954514406,
+        "cseqMethod": "OPTIONS",
+        "from": {
+          "uri": "sip:10.0.0.1",
+          "user": "10.0.0.1",
+          "tag": "99AABBCC-DDD"
+        },
+        "to": {
+          "uri": "sip:192.0.2.10",
+          "user": "192.0.2.10"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "keepalive_and_logs.txt",
+      "line": 12,
+      "seq": 5967202,
+      "hasSeq": true,
+      "time": "2026-09-24T10:30:00.052Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": -1,
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "SIP/2.0 200 OK",
+        "status": 200,
+        "reason": "OK",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKB2C3D4E5F6",
+          "From: \u003csip:10.0.0.1\u003e;tag=99AABBCC-DDD",
+          "To: \u003csip:192.0.2.10\u003e;tag=sip+3+c2d3e4f5+06172839",
+          "Call-ID: 4E5F6071-1@10.0.0.1:5060",
+          "CSeq: 954514406 OPTIONS",
+          "Allow: INVITE, ACK, CANCEL, BYE, OPTIONS",
+          "Content-Length: 0"
+        ],
+        "callId": "4E5F6071-1@10.0.0.1:5060",
+        "cseqNum": 954514406,
+        "cseqMethod": "OPTIONS",
+        "from": {
+          "uri": "sip:10.0.0.1",
+          "user": "10.0.0.1",
+          "tag": "99AABBCC-DDD"
+        },
+        "to": {
+          "uri": "sip:192.0.2.10",
+          "user": "192.0.2.10",
+          "tag": "sip+3+c2d3e4f5+06172839"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "keepalive_and_logs.txt",
+      "line": 23,
+      "seq": 5967203,
+      "hasSeq": true,
+      "time": "2026-09-24T10:30:01.733Z",
+      "timeTrusted": true,
+      "kind": "log",
+      "text": "%SIP-5-DIALPEER_STATUS: VoIP dial-Peer \u003c1000\u003e is Partially Up",
+      "log": {
+        "facility": "SIP",
+        "severity": 5,
+        "mnemonic": "DIALPEER_STATUS",
+        "text": "VoIP dial-Peer \u003c1000\u003e is Partially Up",
+        "callId": -1
+      }
+    },
+    {
+      "source": "keepalive_and_logs.txt",
+      "line": 24,
+      "seq": 5967206,
+      "hasSeq": true,
+      "time": "2026-09-24T10:30:05.91Z",
+      "timeTrusted": true,
+      "kind": "log",
+      "text": "%SIP-5-TLS_CONNECTION: Connection closed due to SOCKET_REMOTE_CLOSURE for addr=192.0.2.10, port=48219, connId=90210",
+      "log": {
+        "facility": "SIP",
+        "severity": 5,
+        "mnemonic": "TLS_CONNECTION",
+        "text": "Connection closed due to SOCKET_REMOTE_CLOSURE for addr=192.0.2.10, port=48219, connId=90210",
+        "callId": -1
+      },
+      "warnings": [
+        "sequence gap: 2 record(s) missing between 5967203 and 5967206"
+      ]
+    },
+    {
+      "source": "keepalive_and_logs.txt",
+      "line": 25,
+      "seq": 5967207,
+      "hasSeq": true,
+      "time": "2026-09-24T10:30:06.001Z",
+      "timeTrusted": true,
+      "kind": "log",
+      "text": "%SYS-6-LOGOUT: User eng1 has exited tty session 2(198.51.100.7)",
+      "log": {
+        "facility": "SYS",
+        "severity": 6,
+        "mnemonic": "LOGOUT",
+        "text": "User eng1 has exited tty session 2(198.51.100.7)",
+        "callId": -1
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "after": 5967203,
+      "before": 5967206,
+      "missing": 2,
+      "kind": "loss"
+    }
+  ],
+  "lines": 25
+}

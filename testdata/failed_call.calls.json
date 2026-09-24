@@ -1,0 +1,66 @@
+{
+  "calls": [
+    {
+      "id": "call-1",
+      "guid": "1B4D3E00000C",
+      "calling": "+449876000222",
+      "called": "+441234000111",
+      "start": "2026-09-24T10:22:04.21Z",
+      "end": "2026-09-24T10:22:04.47Z",
+      "state": "ended",
+      "result": "503 Service Unavailable",
+      "cause": "Q.850;cause=38",
+      "iec": "1.1.180.1.29.0",
+      "legs": [
+        {
+          "id": "leg-1",
+          "source": "failed_call.txt",
+          "callEntryId": 2540671,
+          "guid": "1B4D3E00000C",
+          "sipCallIds": [
+            "2c3d4e5f-60718293-a4b5c6d7-e8f90102@10.0.0.5"
+          ],
+          "direction": "inbound",
+          "calling": "+449876000222",
+          "called": "+441234000111",
+          "start": "2026-09-24T10:22:04.21Z",
+          "end": "2026-09-24T10:22:04.47Z",
+          "state": "ended",
+          "finalStatus": 503,
+          "finalReason": "Service Unavailable",
+          "cause": "Q.850;cause=38",
+          "records": [
+            0,
+            1,
+            6,
+            7
+          ]
+        },
+        {
+          "id": "leg-2",
+          "source": "failed_call.txt",
+          "callEntryId": 2540672,
+          "guid": "1B4D3E00000C",
+          "sipCallIds": [
+            "3d4e5f60-718293a4-b5c6d7e8-f9010203@10.0.0.1"
+          ],
+          "direction": "outbound",
+          "calling": "+449876000222",
+          "called": "+441234000111",
+          "start": "2026-09-24T10:22:04.288Z",
+          "end": "2026-09-24T10:22:04.418Z",
+          "state": "ended",
+          "finalStatus": 503,
+          "finalReason": "Service Unavailable",
+          "iec": "1.1.180.1.29.0",
+          "records": [
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    }
+  ]
+}

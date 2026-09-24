@@ -1,0 +1,25 @@
+5967201: Sep 24 10:30:00.004: //-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:
+Sent:
+OPTIONS sip:192.0.2.10:5060 SIP/2.0
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKB2C3D4E5F6
+From: <sip:10.0.0.1>;tag=99AABBCC-DDD
+To: <sip:192.0.2.10>
+Call-ID: 4E5F6071-1@10.0.0.1:5060
+CSeq: 954514406 OPTIONS
+Max-Forwards: 70
+Content-Length: 0
+
+5967202: Sep 24 10:30:00.052: //-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:
+Received:
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKB2C3D4E5F6
+From: <sip:10.0.0.1>;tag=99AABBCC-DDD
+To: <sip:192.0.2.10>;tag=sip+3+c2d3e4f5+06172839
+Call-ID: 4E5F6071-1@10.0.0.1:5060
+CSeq: 954514406 OPTIONS
+Allow: INVITE, ACK, CANCEL, BYE, OPTIONS
+Content-Length: 0
+
+5967203: Sep 24 10:30:01.733: %SIP-5-DIALPEER_STATUS: VoIP dial-Peer <1000> is Partially Up
+5967206: Sep 24 10:30:05.910: %SIP-5-TLS_CONNECTION: Connection closed due to SOCKET_REMOTE_CLOSURE for addr=192.0.2.10, port=48219, connId=90210
+5967207: Sep 24 10:30:06.001: %SYS-6-LOGOUT: User eng1 has exited tty session 2(198.51.100.7)

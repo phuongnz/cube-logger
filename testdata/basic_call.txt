@@ -1,0 +1,217 @@
+5967001: Sep 24 10:14:20.640: //-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:
+Received:
+INVITE sip:+441234567890@10.0.0.1:5060 SIP/2.0
+Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E
+From: "Example, Ann" <sip:+449876543210@10.0.0.5>;tag=11AA22BB-333
+To: <sip:+441234567890@10.0.0.1>
+Date: Thu, 24 Sep 2026 10:14:20 GMT
+Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5
+Supported: 100rel,timer,resource-priority,replaces
+Min-SE:  1800
+User-Agent: Cisco-CUCM12.5
+Allow: INVITE, OPTIONS, INFO, BYE, CANCEL, ACK, PRACK, UPDATE, REFER, SUBSCRIBE, NOTIFY
+CSeq: 101 INVITE
+Max-Forwards: 70
+Contact: <sip:+449876543210@10.0.0.5:5060>
+Content-Type: application/sdp
+Content-Length: 204
+
+v=0
+o=CiscoSystemsCCM-SIP 1111 1 IN IP4 10.0.0.5
+s=SIP Call
+c=IN IP4 10.0.0.5
+t=0 0
+m=audio 22402 RTP/AVP 8 101
+a=ptime:20
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+
+5967002: Sep 24 10:14:20.644: //2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Sent:
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E
+From: "Example, Ann" <sip:+449876543210@10.0.0.5>;tag=11AA22BB-333
+To: <sip:+441234567890@10.0.0.1>
+Date: Thu, 24 Sep 2026 10:14:20 GMT
+Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5
+CSeq: 101 INVITE
+Allow-Events: telephone-event
+Server: Cisco-SIPGateway/IOS-17.12.5a
+Content-Length: 0
+
+
+5967003: Sep 24 10:14:20.712: //2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Sent:
+INVITE sip:+441234567890@192.0.2.10:5060 SIP/2.0
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B
+From: <sip:+449876543210@10.0.0.1>;tag=44CC55DD-666
+To: <sip:+441234567890@192.0.2.10>
+Date: Thu, 24 Sep 2026 10:14:20 GMT
+Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1
+Cisco-Guid: 0176892928-0000065536-0000761543-0378877706
+User-Agent: Cisco-SIPGateway/IOS-17.12.5a
+CSeq: 101 INVITE
+Max-Forwards: 69
+Contact: <sip:+449876543210@10.0.0.1:5060>
+P-Asserted-Identity: <sip:+449876543210@10.0.0.1>
+Session-Expires:  1800
+Content-Type: application/sdp
+Content-Length: 216
+
+v=0
+o=CiscoSystemsSIP-GW-UserAgent 2222 3333 IN IP4 10.0.0.1
+s=SIP Call
+c=IN IP4 10.0.0.1
+t=0 0
+m=audio 18654 RTP/AVP 8 101
+a=ptime:20
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+
+5967004: Sep 24 10:14:20.760: //2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Received:
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B
+From: <sip:+449876543210@10.0.0.1>;tag=44CC55DD-666
+To: <sip:+441234567890@192.0.2.10>
+Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1
+CSeq: 101 INVITE
+Content-Length: 0
+
+5967005: Sep 24 10:14:22.104: //2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Received:
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B
+From: <sip:+449876543210@10.0.0.1>;tag=44CC55DD-666
+To: <sip:+441234567890@192.0.2.10>;tag=sip+1+a0b1c2d3+e4f50617
+Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1
+CSeq: 101 INVITE
+Content-Length: 0
+
+5967006: Sep 24 10:14:22.108: //2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Sent:
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E
+From: "Example, Ann" <sip:+449876543210@10.0.0.5>;tag=11AA22BB-333
+To: <sip:+441234567890@10.0.0.1>;tag=77EE88FF-999
+Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5
+CSeq: 101 INVITE
+Server: Cisco-SIPGateway/IOS-17.12.5a
+Content-Length: 0
+
+5967007: Sep 24 10:14:26.512: //2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Received:
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B
+From: <sip:+449876543210@10.0.0.1>;tag=44CC55DD-666
+To: <sip:+441234567890@192.0.2.10>;tag=sip+1+a0b1c2d3+e4f50617
+Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1
+CSeq: 101 INVITE
+Contact: <sip:+441234567890@192.0.2.10:5060>
+Content-Type: application/sdp
+Content-Length: 186
+
+v=0
+o=- 4444 5555 IN IP4 192.0.2.10
+s=-
+c=IN IP4 192.0.2.10
+t=0 0
+m=audio 41000 RTP/AVP 8 101
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=ptime:20
+
+5967008: Sep 24 10:14:26.520: //2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Sent:
+ACK sip:+441234567890@192.0.2.10:5060 SIP/2.0
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK2A3B4C5D6E
+From: <sip:+449876543210@10.0.0.1>;tag=44CC55DD-666
+To: <sip:+441234567890@192.0.2.10>;tag=sip+1+a0b1c2d3+e4f50617
+Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1
+CSeq: 101 ACK
+Max-Forwards: 70
+Content-Length: 0
+
+5967009: Sep 24 10:14:26.528: //2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Sent:
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E
+From: "Example, Ann" <sip:+449876543210@10.0.0.5>;tag=11AA22BB-333
+To: <sip:+441234567890@10.0.0.1>;tag=77EE88FF-999
+Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5
+CSeq: 101 INVITE
+Contact: <sip:+441234567890@10.0.0.1:5060>
+Server: Cisco-SIPGateway/IOS-17.12.5a
+Content-Type: application/sdp
+Content-Length: 216
+
+v=0
+o=CiscoSystemsSIP-GW-UserAgent 6666 7777 IN IP4 10.0.0.1
+s=SIP Call
+c=IN IP4 10.0.0.1
+t=0 0
+m=audio 18656 RTP/AVP 8 101
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=ptime:20
+
+5967010: Sep 24 10:14:26.601: //2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Received:
+ACK sip:+441234567890@10.0.0.1:5060 SIP/2.0
+Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK3B4C5D6E7F
+From: "Example, Ann" <sip:+449876543210@10.0.0.5>;tag=11AA22BB-333
+To: <sip:+441234567890@10.0.0.1>;tag=77EE88FF-999
+Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5
+CSeq: 101 ACK
+Max-Forwards: 70
+Content-Length: 0
+
+5967011: Sep 24 10:15:02.336: //2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Received:
+BYE sip:+441234567890@10.0.0.1:5060 SIP/2.0
+Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK4C5D6E7F80
+From: "Example, Ann" <sip:+449876543210@10.0.0.5>;tag=11AA22BB-333
+To: <sip:+441234567890@10.0.0.1>;tag=77EE88FF-999
+Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5
+CSeq: 102 BYE
+Reason: Q.850;cause=16
+Max-Forwards: 70
+Content-Length: 0
+
+5967012: Sep 24 10:15:02.340: //2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Sent:
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK4C5D6E7F80
+From: "Example, Ann" <sip:+449876543210@10.0.0.5>;tag=11AA22BB-333
+To: <sip:+441234567890@10.0.0.1>;tag=77EE88FF-999
+Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5
+CSeq: 102 BYE
+Server: Cisco-SIPGateway/IOS-17.12.5a
+Content-Length: 0
+
+5967013: Sep 24 10:15:02.352: //2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Sent:
+BYE sip:+441234567890@192.0.2.10:5060 SIP/2.0
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK5D6E7F8091
+From: <sip:+449876543210@10.0.0.1>;tag=44CC55DD-666
+To: <sip:+441234567890@192.0.2.10>;tag=sip+1+a0b1c2d3+e4f50617
+Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1
+CSeq: 102 BYE
+Reason: Q.850;cause=16
+Max-Forwards: 70
+Content-Length: 0
+
+5967014: Sep 24 10:15:02.404: //2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:
+Received:
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK5D6E7F8091
+From: <sip:+449876543210@10.0.0.1>;tag=44CC55DD-666
+To: <sip:+441234567890@192.0.2.10>;tag=sip+1+a0b1c2d3+e4f50617
+Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1
+CSeq: 102 BYE
+Content-Length: 0
+

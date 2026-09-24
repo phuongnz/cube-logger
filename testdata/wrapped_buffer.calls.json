@@ -1,0 +1,37 @@
+{
+  "calls": [
+    {
+      "id": "call-1",
+      "guid": "4E705100000F",
+      "calling": "+449876888999",
+      "called": "+441234777888",
+      "start": "2026-09-24T11:00:00.1Z",
+      "end": "2026-09-24T11:00:00.18Z",
+      "state": "setup",
+      "legs": [
+        {
+          "id": "leg-1",
+          "source": "wrapped_buffer.txt",
+          "callEntryId": 2540701,
+          "guid": "4E705100000F",
+          "sipCallIds": [
+            "60718293-a4b5c6d7-e8f90102-03040506@10.0.0.1"
+          ],
+          "direction": "outbound",
+          "calling": "+449876888999",
+          "called": "+441234777888",
+          "start": "2026-09-24T11:00:00.1Z",
+          "end": "2026-09-24T11:00:00.18Z",
+          "state": "setup",
+          "records": [
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  ],
+  "unattached": [
+    2
+  ]
+}

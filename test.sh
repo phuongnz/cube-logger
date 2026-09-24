@@ -19,10 +19,29 @@ else
 fi
 
 if [ -f go.mod ]; then
+  # Each step reports rather than aborting, so one run tells you everything that
+  # is wrong instead of only the first thing.
+  echo "== gofmt =="
+  unformatted=$(gofmt -l . || true)
+  if [ -n "$unformatted" ]; then
+    echo "FAIL: not gofmt-clean (run: gofmt -w .):" >&2
+    echo "$unformatted" >&2
+    fail=1
+  else
+    echo "ok: gofmt-clean"
+  fi
+
+  echo "== go build =="
+  go build ./... || fail=1
+
   echo "== go vet =="
-  go vet ./...
+  go vet ./... || fail=1
+
+  # The test suite carries its own safety net: TestFixturesAreSafeToPublish in
+  # internal/sanitize walks testdata/ and rejects any address or domain that is
+  # not from a reserved range. Fixtures are committed to a public repository.
   echo "== go test =="
-  go test ./...
+  go test ./... || fail=1
 else
   echo "no Go module yet — nothing to test"
 fi

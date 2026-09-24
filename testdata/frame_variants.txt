@@ -1,0 +1,8 @@
+Sep 24 10:40:00.001: //2540681/2C5E4F00000D/SIP/FSM/SPI-State-Change: State change from STATE_IDLE to STATE_SENT_INVITE
+5967302: *Sep 24 10:40:00.100: //2540681/2C5E4F00000D/SIP/API: sipSPISendInvite: sending INVITE to dial-peer 1000
+5967303: Sep 24 10:40:01 BST: %SIP-5-DIALPEER_STATUS: VoIP dial-Peer <2000> is Up
+5967304: Sep 24 2026 10:40:02.500 BST: //2540681/2C5E4F00000D/CUBE_VT/SIP/MISC/Error: no matching dial-peer for outbound leg
+5967305: Sep 24 10:40:03.750:
+5967306: Sep 24 10:40:04.000: //2540681/2C5E4F00000D/
+this line belongs to the record above
+and so does this one

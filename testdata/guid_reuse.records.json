@@ -1,0 +1,209 @@
+{
+  "source": "guid_reuse.txt",
+  "records": [
+    {
+      "source": "guid_reuse.txt",
+      "line": 1,
+      "seq": 5967601,
+      "hasSeq": true,
+      "time": "2026-09-24T12:00:00.1Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540801/5F816200001A/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540801,
+        "guid": "5F816200001A",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "INVITE sip:+441234111222@192.0.2.10:5060 SIP/2.0",
+        "method": "INVITE",
+        "requestUri": "sip:+441234111222@192.0.2.10:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKE5F6071829",
+          "From: \u003csip:+449876333444@10.0.0.1\u003e;tag=CCDDEEFF-001",
+          "To: \u003csip:+441234111222@192.0.2.10\u003e",
+          "Call-ID: 71829304-a5b6c7d8-e9f00112-23344556@10.0.0.1",
+          "CSeq: 101 INVITE",
+          "Content-Length: 0"
+        ],
+        "callId": "71829304-a5b6c7d8-e9f00112-23344556@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876333444@10.0.0.1",
+          "user": "+449876333444",
+          "host": "10.0.0.1",
+          "tag": "CCDDEEFF-001"
+        },
+        "to": {
+          "uri": "sip:+441234111222@192.0.2.10",
+          "user": "+441234111222",
+          "host": "192.0.2.10"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "guid_reuse.txt",
+      "line": 11,
+      "seq": 5967602,
+      "hasSeq": true,
+      "time": "2026-09-24T12:00:00.91Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540801/5F816200001A/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540801,
+        "guid": "5F816200001A",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "SIP/2.0 486 Busy Here",
+        "status": 486,
+        "reason": "Busy Here",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKE5F6071829",
+          "From: \u003csip:+449876333444@10.0.0.1\u003e;tag=CCDDEEFF-001",
+          "To: \u003csip:+441234111222@192.0.2.10\u003e;tag=sip+4+d3e4f506+17283940",
+          "Call-ID: 71829304-a5b6c7d8-e9f00112-23344556@10.0.0.1",
+          "CSeq: 101 INVITE",
+          "Reason: Q.850;cause=17",
+          "Content-Length: 0"
+        ],
+        "callId": "71829304-a5b6c7d8-e9f00112-23344556@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876333444@10.0.0.1",
+          "user": "+449876333444",
+          "host": "10.0.0.1",
+          "tag": "CCDDEEFF-001"
+        },
+        "to": {
+          "uri": "sip:+441234111222@192.0.2.10",
+          "user": "+441234111222",
+          "host": "192.0.2.10",
+          "tag": "sip+4+d3e4f506+17283940"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "guid_reuse.txt",
+      "line": 22,
+      "seq": 5967603,
+      "hasSeq": true,
+      "time": "2026-09-24T12:02:30.2Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540955/5F816200001A/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540955,
+        "guid": "5F816200001A",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "INVITE sip:+441234555999@192.0.2.10:5060 SIP/2.0",
+        "method": "INVITE",
+        "requestUri": "sip:+441234555999@192.0.2.10:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKF60718293A",
+          "From: \u003csip:+449876777888@10.0.0.1\u003e;tag=DDEEFF00-002",
+          "To: \u003csip:+441234555999@192.0.2.10\u003e",
+          "Call-ID: 8293a4b5-c6d7e8f9-00112233-44556677@10.0.0.1",
+          "CSeq: 101 INVITE",
+          "Content-Length: 0"
+        ],
+        "callId": "8293a4b5-c6d7e8f9-00112233-44556677@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876777888@10.0.0.1",
+          "user": "+449876777888",
+          "host": "10.0.0.1",
+          "tag": "DDEEFF00-002"
+        },
+        "to": {
+          "uri": "sip:+441234555999@192.0.2.10",
+          "user": "+441234555999",
+          "host": "192.0.2.10"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "guid_reuse.txt",
+      "line": 32,
+      "seq": 5967604,
+      "hasSeq": true,
+      "time": "2026-09-24T12:02:30.88Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540955/5F816200001A/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540955,
+        "guid": "5F816200001A",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "SIP/2.0 200 OK",
+        "status": 200,
+        "reason": "OK",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bKF60718293A",
+          "From: \u003csip:+449876777888@10.0.0.1\u003e;tag=DDEEFF00-002",
+          "To: \u003csip:+441234555999@192.0.2.10\u003e;tag=sip+5+e4f50617+28394051",
+          "Call-ID: 8293a4b5-c6d7e8f9-00112233-44556677@10.0.0.1",
+          "CSeq: 101 INVITE",
+          "Content-Length: 0"
+        ],
+        "callId": "8293a4b5-c6d7e8f9-00112233-44556677@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876777888@10.0.0.1",
+          "user": "+449876777888",
+          "host": "10.0.0.1",
+          "tag": "DDEEFF00-002"
+        },
+        "to": {
+          "uri": "sip:+441234555999@192.0.2.10",
+          "user": "+441234555999",
+          "host": "192.0.2.10",
+          "tag": "sip+5+e4f50617+28394051"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    }
+  ],
+  "lines": 41
+}

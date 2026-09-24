@@ -1,0 +1,111 @@
+{
+  "source": "frame_variants.txt",
+  "records": [
+    {
+      "source": "frame_variants.txt",
+      "line": 1,
+      "time": "2026-09-24T10:40:00.001Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540681/2C5E4F00000D/SIP/FSM/SPI-State-Change: State change from STATE_IDLE to STATE_SENT_INVITE",
+      "debug": {
+        "callId": 2540681,
+        "guid": "2C5E4F00000D",
+        "component": [
+          "SIP",
+          "FSM",
+          "SPI-State-Change"
+        ],
+        "detail": "State change from STATE_IDLE to STATE_SENT_INVITE"
+      }
+    },
+    {
+      "source": "frame_variants.txt",
+      "line": 2,
+      "seq": 5967302,
+      "hasSeq": true,
+      "time": "2026-09-24T10:40:00.1Z",
+      "timeTrusted": false,
+      "kind": "debug",
+      "text": "//2540681/2C5E4F00000D/SIP/API: sipSPISendInvite: sending INVITE to dial-peer 1000",
+      "debug": {
+        "callId": 2540681,
+        "guid": "2C5E4F00000D",
+        "component": [
+          "SIP",
+          "API"
+        ],
+        "detail": "sipSPISendInvite: sending INVITE to dial-peer 1000"
+      }
+    },
+    {
+      "source": "frame_variants.txt",
+      "line": 3,
+      "seq": 5967303,
+      "hasSeq": true,
+      "time": "2026-09-24T10:40:01Z",
+      "zone": "BST",
+      "timeTrusted": true,
+      "kind": "log",
+      "text": "%SIP-5-DIALPEER_STATUS: VoIP dial-Peer \u003c2000\u003e is Up",
+      "log": {
+        "facility": "SIP",
+        "severity": 5,
+        "mnemonic": "DIALPEER_STATUS",
+        "text": "VoIP dial-Peer \u003c2000\u003e is Up",
+        "callId": -1
+      }
+    },
+    {
+      "source": "frame_variants.txt",
+      "line": 4,
+      "seq": 5967304,
+      "hasSeq": true,
+      "time": "2026-09-24T10:40:02.5Z",
+      "zone": "BST",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540681/2C5E4F00000D/CUBE_VT/SIP/MISC/Error: no matching dial-peer for outbound leg",
+      "debug": {
+        "callId": 2540681,
+        "guid": "2C5E4F00000D",
+        "component": [
+          "CUBE_VT",
+          "SIP",
+          "MISC",
+          "Error"
+        ],
+        "detail": "no matching dial-peer for outbound leg"
+      }
+    },
+    {
+      "source": "frame_variants.txt",
+      "line": 5,
+      "seq": 5967305,
+      "hasSeq": true,
+      "time": "2026-09-24T10:40:03.75Z",
+      "timeTrusted": true,
+      "kind": "other",
+      "text": ""
+    },
+    {
+      "source": "frame_variants.txt",
+      "line": 6,
+      "seq": 5967306,
+      "hasSeq": true,
+      "time": "2026-09-24T10:40:04Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540681/2C5E4F00000D/",
+      "debug": {
+        "callId": 2540681,
+        "guid": "2C5E4F00000D"
+      },
+      "cont": [
+        "this line belongs to the record above",
+        "and so does this one"
+      ]
+    }
+  ],
+  "lines": 8
+}

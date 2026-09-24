@@ -1,0 +1,28 @@
+5967401: Sep 24 10:50:12.100: //2540691/3D6F5000000E/CUBE_VT/SIP/Msg/ccsipDisplayMsg:
+Sent: SIP TLS message from 10.0.0.1:5061 to 192.0.2.10:38208
+INVITE sip:+441234555666@192.0.2.10:5061;transport=tls SIP/2.0
+Via: SIP/2.0/TLS 10.0.0.1:5061;branch=z9hG4bKC3D4E5F607
+From: <sip:+449876555777@10.0.0.1>;tag=AABBCCDD-EEE
+To: <sip:+441234555666@192.0.2.10>
+Call-ID: 5f607182-93a4b5c6-d7e8f901-02030405@10.0.0.1
+Cisco-Guid: 1030705152-0000065536-0000917505-0378877706
+CSeq: 101 INVITE
+Max-Forwards: 70
+Content-Length: 0
+
+5967402: Sep 24 10:50:12.105: //2540691/3D6F5000000E/CUBE_VT/SIP/FSM/SPI-State-Change: 0x7F2A1B3C4D5E : State change from STATE_IDLE to STATE_SENT_INVITE
+5967403: Sep 24 10:50:18.902: //2540691/3D6F5000000E/
+------------------ Cover Buffer ---------------
+Search-key       = +449876555777:+441234555666:2540691
+  Timestamp      = Sep 24 10:50:12.100
+  CallID         = 2540691
+  Peer-CallID    = NA
+  Correlator     = NA
+  Called-Number  = +441234555666
+  Calling-Number = +449876555777
+  SIP CallID     = 5f607182-93a4b5c6-d7e8f901-02030405@10.0.0.1
+  SIP SessionID  =
+  GUID           = 3D6F5000000E
+  Tenant         = 300
+  Cause-code     = n/a
+-----------------------------------------------

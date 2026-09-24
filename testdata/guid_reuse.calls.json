@@ -1,0 +1,72 @@
+{
+  "calls": [
+    {
+      "id": "call-1",
+      "guid": "5F816200001A",
+      "calling": "+449876333444",
+      "called": "+441234111222",
+      "start": "2026-09-24T12:00:00.1Z",
+      "end": "2026-09-24T12:00:00.91Z",
+      "state": "ended",
+      "result": "486 Busy Here",
+      "cause": "Q.850;cause=17",
+      "legs": [
+        {
+          "id": "leg-1",
+          "source": "guid_reuse.txt",
+          "callEntryId": 2540801,
+          "guid": "5F816200001A",
+          "sipCallIds": [
+            "71829304-a5b6c7d8-e9f00112-23344556@10.0.0.1"
+          ],
+          "direction": "outbound",
+          "calling": "+449876333444",
+          "called": "+441234111222",
+          "start": "2026-09-24T12:00:00.1Z",
+          "end": "2026-09-24T12:00:00.91Z",
+          "state": "ended",
+          "finalStatus": 486,
+          "finalReason": "Busy Here",
+          "cause": "Q.850;cause=17",
+          "records": [
+            0,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "call-2",
+      "guid": "5F816200001A",
+      "calling": "+449876777888",
+      "called": "+441234555999",
+      "start": "2026-09-24T12:02:30.2Z",
+      "end": "2026-09-24T12:02:30.88Z",
+      "state": "connected",
+      "result": "200 OK",
+      "legs": [
+        {
+          "id": "leg-2",
+          "source": "guid_reuse.txt",
+          "callEntryId": 2540955,
+          "guid": "5F816200001A",
+          "sipCallIds": [
+            "8293a4b5-c6d7e8f9-00112233-44556677@10.0.0.1"
+          ],
+          "direction": "outbound",
+          "calling": "+449876777888",
+          "called": "+441234555999",
+          "start": "2026-09-24T12:02:30.2Z",
+          "end": "2026-09-24T12:02:30.88Z",
+          "state": "connected",
+          "finalStatus": 200,
+          "finalReason": "OK",
+          "records": [
+            2,
+            3
+          ]
+        }
+      ]
+    }
+  ]
+}

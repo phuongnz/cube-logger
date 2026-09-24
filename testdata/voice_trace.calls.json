@@ -1,0 +1,35 @@
+{
+  "calls": [
+    {
+      "id": "call-1",
+      "guid": "3D6F5000000E",
+      "calling": "+449876555777",
+      "called": "+441234555666",
+      "start": "2026-09-24T10:50:12.1Z",
+      "end": "2026-09-24T10:50:18.902Z",
+      "state": "setup",
+      "legs": [
+        {
+          "id": "leg-1",
+          "source": "voice_trace.txt",
+          "callEntryId": 2540691,
+          "guid": "3D6F5000000E",
+          "sipCallIds": [
+            "5f607182-93a4b5c6-d7e8f901-02030405@10.0.0.1"
+          ],
+          "direction": "outbound",
+          "calling": "+449876555777",
+          "called": "+441234555666",
+          "start": "2026-09-24T10:50:12.1Z",
+          "end": "2026-09-24T10:50:18.902Z",
+          "state": "setup",
+          "records": [
+            0,
+            1,
+            2
+          ]
+        }
+      ]
+    }
+  ]
+}

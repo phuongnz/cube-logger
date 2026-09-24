@@ -1,0 +1,106 @@
+{
+  "source": "voice_trace.txt",
+  "records": [
+    {
+      "source": "voice_trace.txt",
+      "line": 1,
+      "seq": 5967401,
+      "hasSeq": true,
+      "time": "2026-09-24T10:50:12.1Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540691/3D6F5000000E/CUBE_VT/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540691,
+        "guid": "3D6F5000000E",
+        "component": [
+          "CUBE_VT",
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "detail": "SIP TLS message from 10.0.0.1:5061 to 192.0.2.10:38208",
+        "startLine": "INVITE sip:+441234555666@192.0.2.10:5061;transport=tls SIP/2.0",
+        "method": "INVITE",
+        "requestUri": "sip:+441234555666@192.0.2.10:5061;transport=tls",
+        "headers": [
+          "Via: SIP/2.0/TLS 10.0.0.1:5061;branch=z9hG4bKC3D4E5F607",
+          "From: \u003csip:+449876555777@10.0.0.1\u003e;tag=AABBCCDD-EEE",
+          "To: \u003csip:+441234555666@192.0.2.10\u003e",
+          "Call-ID: 5f607182-93a4b5c6-d7e8f901-02030405@10.0.0.1",
+          "Cisco-Guid: 1030705152-0000065536-0000917505-0378877706",
+          "CSeq: 101 INVITE",
+          "Max-Forwards: 70",
+          "Content-Length: 0"
+        ],
+        "callId": "5f607182-93a4b5c6-d7e8f901-02030405@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876555777@10.0.0.1",
+          "user": "+449876555777",
+          "host": "10.0.0.1",
+          "tag": "AABBCCDD-EEE"
+        },
+        "to": {
+          "uri": "sip:+441234555666@192.0.2.10",
+          "user": "+441234555666",
+          "host": "192.0.2.10"
+        },
+        "ciscoGuid": "1030705152-0000065536-0000917505-0378877706",
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "voice_trace.txt",
+      "line": 13,
+      "seq": 5967402,
+      "hasSeq": true,
+      "time": "2026-09-24T10:50:12.105Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540691/3D6F5000000E/CUBE_VT/SIP/FSM/SPI-State-Change: 0x7F2A1B3C4D5E : State change from STATE_IDLE to STATE_SENT_INVITE",
+      "debug": {
+        "callId": 2540691,
+        "guid": "3D6F5000000E",
+        "component": [
+          "CUBE_VT",
+          "SIP",
+          "FSM",
+          "SPI-State-Change"
+        ],
+        "detail": "0x7F2A1B3C4D5E : State change from STATE_IDLE to STATE_SENT_INVITE"
+      }
+    },
+    {
+      "source": "voice_trace.txt",
+      "line": 14,
+      "seq": 5967403,
+      "hasSeq": true,
+      "time": "2026-09-24T10:50:18.902Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540691/3D6F5000000E/",
+      "debug": {
+        "callId": 2540691,
+        "guid": "3D6F5000000E"
+      },
+      "cover": {
+        "searchKey": "+449876555777:+441234555666:2540691",
+        "timestamp": "Sep 24 10:50:12.100",
+        "callId": 2540691,
+        "calledNumber": "+441234555666",
+        "callingNumber": "+449876555777",
+        "sipCallId": "5f607182-93a4b5c6-d7e8f901-02030405@10.0.0.1",
+        "guid": "3D6F5000000E",
+        "tenant": "300"
+      }
+    }
+  ],
+  "lines": 28
+}

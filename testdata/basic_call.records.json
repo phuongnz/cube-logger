@@ -1,0 +1,759 @@
+{
+  "source": "basic_call.txt",
+  "records": [
+    {
+      "source": "basic_call.txt",
+      "line": 1,
+      "seq": 5967001,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:20.64Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": -1,
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "INVITE sip:+441234567890@10.0.0.1:5060 SIP/2.0",
+        "method": "INVITE",
+        "requestUri": "sip:+441234567890@10.0.0.1:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E",
+          "From: \"Example, Ann\" \u003csip:+449876543210@10.0.0.5\u003e;tag=11AA22BB-333",
+          "To: \u003csip:+441234567890@10.0.0.1\u003e",
+          "Date: Thu, 24 Sep 2026 10:14:20 GMT",
+          "Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+          "Supported: 100rel,timer,resource-priority,replaces",
+          "Min-SE:  1800",
+          "User-Agent: Cisco-CUCM12.5",
+          "Allow: INVITE, OPTIONS, INFO, BYE, CANCEL, ACK, PRACK, UPDATE, REFER, SUBSCRIBE, NOTIFY",
+          "CSeq: 101 INVITE",
+          "Max-Forwards: 70",
+          "Contact: \u003csip:+449876543210@10.0.0.5:5060\u003e",
+          "Content-Type: application/sdp",
+          "Content-Length: 204"
+        ],
+        "callId": "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "display": "Example, Ann",
+          "uri": "sip:+449876543210@10.0.0.5",
+          "user": "+449876543210",
+          "host": "10.0.0.5",
+          "tag": "11AA22BB-333"
+        },
+        "to": {
+          "uri": "sip:+441234567890@10.0.0.1",
+          "user": "+441234567890",
+          "host": "10.0.0.1"
+        },
+        "contentLength": 204,
+        "hasContentLength": true,
+        "bodyBytes": 204,
+        "body": "v=0\no=CiscoSystemsCCM-SIP 1111 1 IN IP4 10.0.0.5\ns=SIP Call\nc=IN IP4 10.0.0.5\nt=0 0\nm=audio 22402 RTP/AVP 8 101\na=ptime:20\na=rtpmap:8 PCMA/8000\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-15"
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 30,
+      "seq": 5967002,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:20.644Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540661,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "SIP/2.0 100 Trying",
+        "status": 100,
+        "reason": "Trying",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E",
+          "From: \"Example, Ann\" \u003csip:+449876543210@10.0.0.5\u003e;tag=11AA22BB-333",
+          "To: \u003csip:+441234567890@10.0.0.1\u003e",
+          "Date: Thu, 24 Sep 2026 10:14:20 GMT",
+          "Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+          "CSeq: 101 INVITE",
+          "Allow-Events: telephone-event",
+          "Server: Cisco-SIPGateway/IOS-17.12.5a",
+          "Content-Length: 0"
+        ],
+        "callId": "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "display": "Example, Ann",
+          "uri": "sip:+449876543210@10.0.0.5",
+          "user": "+449876543210",
+          "host": "10.0.0.5",
+          "tag": "11AA22BB-333"
+        },
+        "to": {
+          "uri": "sip:+441234567890@10.0.0.1",
+          "user": "+441234567890",
+          "host": "10.0.0.1"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 44,
+      "seq": 5967003,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:20.712Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540662,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "INVITE sip:+441234567890@192.0.2.10:5060 SIP/2.0",
+        "method": "INVITE",
+        "requestUri": "sip:+441234567890@192.0.2.10:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B",
+          "From: \u003csip:+449876543210@10.0.0.1\u003e;tag=44CC55DD-666",
+          "To: \u003csip:+441234567890@192.0.2.10\u003e",
+          "Date: Thu, 24 Sep 2026 10:14:20 GMT",
+          "Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+          "Cisco-Guid: 0176892928-0000065536-0000761543-0378877706",
+          "User-Agent: Cisco-SIPGateway/IOS-17.12.5a",
+          "CSeq: 101 INVITE",
+          "Max-Forwards: 69",
+          "Contact: \u003csip:+449876543210@10.0.0.1:5060\u003e",
+          "P-Asserted-Identity: \u003csip:+449876543210@10.0.0.1\u003e",
+          "Session-Expires:  1800",
+          "Content-Type: application/sdp",
+          "Content-Length: 216"
+        ],
+        "callId": "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876543210@10.0.0.1",
+          "user": "+449876543210",
+          "host": "10.0.0.1",
+          "tag": "44CC55DD-666"
+        },
+        "to": {
+          "uri": "sip:+441234567890@192.0.2.10",
+          "user": "+441234567890",
+          "host": "192.0.2.10"
+        },
+        "ciscoGuid": "0176892928-0000065536-0000761543-0378877706",
+        "contentLength": 216,
+        "hasContentLength": true,
+        "bodyBytes": 216,
+        "body": "v=0\no=CiscoSystemsSIP-GW-UserAgent 2222 3333 IN IP4 10.0.0.1\ns=SIP Call\nc=IN IP4 10.0.0.1\nt=0 0\nm=audio 18654 RTP/AVP 8 101\na=ptime:20\na=rtpmap:8 PCMA/8000\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-15"
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 73,
+      "seq": 5967004,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:20.76Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540662,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "SIP/2.0 100 Trying",
+        "status": 100,
+        "reason": "Trying",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B",
+          "From: \u003csip:+449876543210@10.0.0.1\u003e;tag=44CC55DD-666",
+          "To: \u003csip:+441234567890@192.0.2.10\u003e",
+          "Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+          "CSeq: 101 INVITE",
+          "Content-Length: 0"
+        ],
+        "callId": "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876543210@10.0.0.1",
+          "user": "+449876543210",
+          "host": "10.0.0.1",
+          "tag": "44CC55DD-666"
+        },
+        "to": {
+          "uri": "sip:+441234567890@192.0.2.10",
+          "user": "+441234567890",
+          "host": "192.0.2.10"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 83,
+      "seq": 5967005,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:22.104Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540662,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "SIP/2.0 180 Ringing",
+        "status": 180,
+        "reason": "Ringing",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B",
+          "From: \u003csip:+449876543210@10.0.0.1\u003e;tag=44CC55DD-666",
+          "To: \u003csip:+441234567890@192.0.2.10\u003e;tag=sip+1+a0b1c2d3+e4f50617",
+          "Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+          "CSeq: 101 INVITE",
+          "Content-Length: 0"
+        ],
+        "callId": "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876543210@10.0.0.1",
+          "user": "+449876543210",
+          "host": "10.0.0.1",
+          "tag": "44CC55DD-666"
+        },
+        "to": {
+          "uri": "sip:+441234567890@192.0.2.10",
+          "user": "+441234567890",
+          "host": "192.0.2.10",
+          "tag": "sip+1+a0b1c2d3+e4f50617"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 93,
+      "seq": 5967006,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:22.108Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540661,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "SIP/2.0 180 Ringing",
+        "status": 180,
+        "reason": "Ringing",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E",
+          "From: \"Example, Ann\" \u003csip:+449876543210@10.0.0.5\u003e;tag=11AA22BB-333",
+          "To: \u003csip:+441234567890@10.0.0.1\u003e;tag=77EE88FF-999",
+          "Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+          "CSeq: 101 INVITE",
+          "Server: Cisco-SIPGateway/IOS-17.12.5a",
+          "Content-Length: 0"
+        ],
+        "callId": "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "display": "Example, Ann",
+          "uri": "sip:+449876543210@10.0.0.5",
+          "user": "+449876543210",
+          "host": "10.0.0.5",
+          "tag": "11AA22BB-333"
+        },
+        "to": {
+          "uri": "sip:+441234567890@10.0.0.1",
+          "user": "+441234567890",
+          "host": "10.0.0.1",
+          "tag": "77EE88FF-999"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 104,
+      "seq": 5967007,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:26.512Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540662,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "SIP/2.0 200 OK",
+        "status": 200,
+        "reason": "OK",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK1F2E3D4C5B",
+          "From: \u003csip:+449876543210@10.0.0.1\u003e;tag=44CC55DD-666",
+          "To: \u003csip:+441234567890@192.0.2.10\u003e;tag=sip+1+a0b1c2d3+e4f50617",
+          "Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+          "CSeq: 101 INVITE",
+          "Contact: \u003csip:+441234567890@192.0.2.10:5060\u003e",
+          "Content-Type: application/sdp",
+          "Content-Length: 186"
+        ],
+        "callId": "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "uri": "sip:+449876543210@10.0.0.1",
+          "user": "+449876543210",
+          "host": "10.0.0.1",
+          "tag": "44CC55DD-666"
+        },
+        "to": {
+          "uri": "sip:+441234567890@192.0.2.10",
+          "user": "+441234567890",
+          "host": "192.0.2.10",
+          "tag": "sip+1+a0b1c2d3+e4f50617"
+        },
+        "contentLength": 186,
+        "hasContentLength": true,
+        "bodyBytes": 186,
+        "body": "v=0\no=- 4444 5555 IN IP4 192.0.2.10\ns=-\nc=IN IP4 192.0.2.10\nt=0 0\nm=audio 41000 RTP/AVP 8 101\na=rtpmap:8 PCMA/8000\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-15\na=ptime:20"
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 127,
+      "seq": 5967008,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:26.52Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540662,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "ACK sip:+441234567890@192.0.2.10:5060 SIP/2.0",
+        "method": "ACK",
+        "requestUri": "sip:+441234567890@192.0.2.10:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK2A3B4C5D6E",
+          "From: \u003csip:+449876543210@10.0.0.1\u003e;tag=44CC55DD-666",
+          "To: \u003csip:+441234567890@192.0.2.10\u003e;tag=sip+1+a0b1c2d3+e4f50617",
+          "Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+          "CSeq: 101 ACK",
+          "Max-Forwards: 70",
+          "Content-Length: 0"
+        ],
+        "callId": "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+        "cseqNum": 101,
+        "cseqMethod": "ACK",
+        "from": {
+          "uri": "sip:+449876543210@10.0.0.1",
+          "user": "+449876543210",
+          "host": "10.0.0.1",
+          "tag": "44CC55DD-666"
+        },
+        "to": {
+          "uri": "sip:+441234567890@192.0.2.10",
+          "user": "+441234567890",
+          "host": "192.0.2.10",
+          "tag": "sip+1+a0b1c2d3+e4f50617"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 138,
+      "seq": 5967009,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:26.528Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540661,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "SIP/2.0 200 OK",
+        "status": 200,
+        "reason": "OK",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK0A1B2C3D4E",
+          "From: \"Example, Ann\" \u003csip:+449876543210@10.0.0.5\u003e;tag=11AA22BB-333",
+          "To: \u003csip:+441234567890@10.0.0.1\u003e;tag=77EE88FF-999",
+          "Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+          "CSeq: 101 INVITE",
+          "Contact: \u003csip:+441234567890@10.0.0.1:5060\u003e",
+          "Server: Cisco-SIPGateway/IOS-17.12.5a",
+          "Content-Type: application/sdp",
+          "Content-Length: 216"
+        ],
+        "callId": "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+        "cseqNum": 101,
+        "cseqMethod": "INVITE",
+        "from": {
+          "display": "Example, Ann",
+          "uri": "sip:+449876543210@10.0.0.5",
+          "user": "+449876543210",
+          "host": "10.0.0.5",
+          "tag": "11AA22BB-333"
+        },
+        "to": {
+          "uri": "sip:+441234567890@10.0.0.1",
+          "user": "+441234567890",
+          "host": "10.0.0.1",
+          "tag": "77EE88FF-999"
+        },
+        "contentLength": 216,
+        "hasContentLength": true,
+        "bodyBytes": 216,
+        "body": "v=0\no=CiscoSystemsSIP-GW-UserAgent 6666 7777 IN IP4 10.0.0.1\ns=SIP Call\nc=IN IP4 10.0.0.1\nt=0 0\nm=audio 18656 RTP/AVP 8 101\na=rtpmap:8 PCMA/8000\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-15\na=ptime:20"
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 162,
+      "seq": 5967010,
+      "hasSeq": true,
+      "time": "2026-09-24T10:14:26.601Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540661,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "ACK sip:+441234567890@10.0.0.1:5060 SIP/2.0",
+        "method": "ACK",
+        "requestUri": "sip:+441234567890@10.0.0.1:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK3B4C5D6E7F",
+          "From: \"Example, Ann\" \u003csip:+449876543210@10.0.0.5\u003e;tag=11AA22BB-333",
+          "To: \u003csip:+441234567890@10.0.0.1\u003e;tag=77EE88FF-999",
+          "Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+          "CSeq: 101 ACK",
+          "Max-Forwards: 70",
+          "Content-Length: 0"
+        ],
+        "callId": "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+        "cseqNum": 101,
+        "cseqMethod": "ACK",
+        "from": {
+          "display": "Example, Ann",
+          "uri": "sip:+449876543210@10.0.0.5",
+          "user": "+449876543210",
+          "host": "10.0.0.5",
+          "tag": "11AA22BB-333"
+        },
+        "to": {
+          "uri": "sip:+441234567890@10.0.0.1",
+          "user": "+441234567890",
+          "host": "10.0.0.1",
+          "tag": "77EE88FF-999"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 173,
+      "seq": 5967011,
+      "hasSeq": true,
+      "time": "2026-09-24T10:15:02.336Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540661,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "BYE sip:+441234567890@10.0.0.1:5060 SIP/2.0",
+        "method": "BYE",
+        "requestUri": "sip:+441234567890@10.0.0.1:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK4C5D6E7F80",
+          "From: \"Example, Ann\" \u003csip:+449876543210@10.0.0.5\u003e;tag=11AA22BB-333",
+          "To: \u003csip:+441234567890@10.0.0.1\u003e;tag=77EE88FF-999",
+          "Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+          "CSeq: 102 BYE",
+          "Reason: Q.850;cause=16",
+          "Max-Forwards: 70",
+          "Content-Length: 0"
+        ],
+        "callId": "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+        "cseqNum": 102,
+        "cseqMethod": "BYE",
+        "from": {
+          "display": "Example, Ann",
+          "uri": "sip:+449876543210@10.0.0.5",
+          "user": "+449876543210",
+          "host": "10.0.0.5",
+          "tag": "11AA22BB-333"
+        },
+        "to": {
+          "uri": "sip:+441234567890@10.0.0.1",
+          "user": "+441234567890",
+          "host": "10.0.0.1",
+          "tag": "77EE88FF-999"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 185,
+      "seq": 5967012,
+      "hasSeq": true,
+      "time": "2026-09-24T10:15:02.34Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540661/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540661,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "SIP/2.0 200 OK",
+        "status": 200,
+        "reason": "OK",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.5:5060;branch=z9hG4bK4C5D6E7F80",
+          "From: \"Example, Ann\" \u003csip:+449876543210@10.0.0.5\u003e;tag=11AA22BB-333",
+          "To: \u003csip:+441234567890@10.0.0.1\u003e;tag=77EE88FF-999",
+          "Call-ID: 0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+          "CSeq: 102 BYE",
+          "Server: Cisco-SIPGateway/IOS-17.12.5a",
+          "Content-Length: 0"
+        ],
+        "callId": "0a1b2c3d-4e5f6071-8293a4b5-c6d7e8f9@10.0.0.5",
+        "cseqNum": 102,
+        "cseqMethod": "BYE",
+        "from": {
+          "display": "Example, Ann",
+          "uri": "sip:+449876543210@10.0.0.5",
+          "user": "+449876543210",
+          "host": "10.0.0.5",
+          "tag": "11AA22BB-333"
+        },
+        "to": {
+          "uri": "sip:+441234567890@10.0.0.1",
+          "user": "+441234567890",
+          "host": "10.0.0.1",
+          "tag": "77EE88FF-999"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 196,
+      "seq": 5967013,
+      "hasSeq": true,
+      "time": "2026-09-24T10:15:02.352Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540662,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "sent",
+        "startLine": "BYE sip:+441234567890@192.0.2.10:5060 SIP/2.0",
+        "method": "BYE",
+        "requestUri": "sip:+441234567890@192.0.2.10:5060",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK5D6E7F8091",
+          "From: \u003csip:+449876543210@10.0.0.1\u003e;tag=44CC55DD-666",
+          "To: \u003csip:+441234567890@192.0.2.10\u003e;tag=sip+1+a0b1c2d3+e4f50617",
+          "Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+          "CSeq: 102 BYE",
+          "Reason: Q.850;cause=16",
+          "Max-Forwards: 70",
+          "Content-Length: 0"
+        ],
+        "callId": "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+        "cseqNum": 102,
+        "cseqMethod": "BYE",
+        "from": {
+          "uri": "sip:+449876543210@10.0.0.1",
+          "user": "+449876543210",
+          "host": "10.0.0.1",
+          "tag": "44CC55DD-666"
+        },
+        "to": {
+          "uri": "sip:+441234567890@192.0.2.10",
+          "user": "+441234567890",
+          "host": "192.0.2.10",
+          "tag": "sip+1+a0b1c2d3+e4f50617"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    },
+    {
+      "source": "basic_call.txt",
+      "line": 208,
+      "seq": 5967014,
+      "hasSeq": true,
+      "time": "2026-09-24T10:15:02.404Z",
+      "timeTrusted": true,
+      "kind": "debug",
+      "text": "//2540662/0A8B2C00000B/SIP/Msg/ccsipDisplayMsg:",
+      "debug": {
+        "callId": 2540662,
+        "guid": "0A8B2C00000B",
+        "component": [
+          "SIP",
+          "Msg",
+          "ccsipDisplayMsg"
+        ]
+      },
+      "sip": {
+        "direction": "received",
+        "startLine": "SIP/2.0 200 OK",
+        "status": 200,
+        "reason": "OK",
+        "headers": [
+          "Via: SIP/2.0/UDP 10.0.0.1:5060;branch=z9hG4bK5D6E7F8091",
+          "From: \u003csip:+449876543210@10.0.0.1\u003e;tag=44CC55DD-666",
+          "To: \u003csip:+441234567890@192.0.2.10\u003e;tag=sip+1+a0b1c2d3+e4f50617",
+          "Call-ID: 1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+          "CSeq: 102 BYE",
+          "Content-Length: 0"
+        ],
+        "callId": "1b2c3d4e-5f607182-93a4b5c6-d7e8f901@10.0.0.1",
+        "cseqNum": 102,
+        "cseqMethod": "BYE",
+        "from": {
+          "uri": "sip:+449876543210@10.0.0.1",
+          "user": "+449876543210",
+          "host": "10.0.0.1",
+          "tag": "44CC55DD-666"
+        },
+        "to": {
+          "uri": "sip:+441234567890@192.0.2.10",
+          "user": "+441234567890",
+          "host": "192.0.2.10",
+          "tag": "sip+1+a0b1c2d3+e4f50617"
+        },
+        "contentLength": 0,
+        "hasContentLength": true,
+        "bodyBytes": 0
+      }
+    }
+  ],
+  "lines": 217
+}
