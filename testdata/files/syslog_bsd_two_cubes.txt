@@ -1,0 +1,15 @@
+Sep 24 09:10:00 cube-a 7002001: Sep 24 09:10:00.011: %SIP-5-DIALPEER_STATUS: VoIP dial-Peer <2000> is Up
+Sep 24 09:10:00 cube-b 8100501: Sep 24 09:10:00.032: %SIP-5-DIALPEER_STATUS: VoIP dial-Peer <3000> is Up
+Sep 24 09:10:01 cube-a 7002002: Sep 24 09:10:01.100: //-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:
+Sep 24 09:10:01 cube-a Received:
+Sep 24 09:10:01 cube-a INVITE sip:15550100@10.0.0.1:5060 SIP/2.0
+Sep 24 09:10:01 cube-a Via: SIP/2.0/UDP 192.0.2.10:5060;branch=z9hG4bK5E6F7A8B
+Sep 24 09:10:01 cube-a From: <sip:15550199@192.0.2.10>;tag=B2C3D4E5-222
+Sep 24 09:10:01 cube-a To: <sip:15550100@10.0.0.1>
+Sep 24 09:10:01 cube-a Call-ID: 22334455-6677@192.0.2.10
+Sep 24 09:10:01 cube-a CSeq: 102 INVITE
+Sep 24 09:10:01 cube-a Content-Length: 0
+Sep 24 09:10:01 cube-a 
+Sep 24 09:10:02 cube-b 8100502: Sep 24 09:10:02.400: %SYS-5-CONFIG_I: Configured from console by eng2 on vty1 (10.0.0.9)
+Sep 24 09:10:03 cube-a 7002003: Sep 24 09:10:03.250: //2/22334455/CCAPI/cc_api_call_setup_ind_common:
+Sep 24 09:10:03 cube-a    Interface=0x7F0A1B2C3D, Call Info(Calling Number=15550199,Called Number=15550100)

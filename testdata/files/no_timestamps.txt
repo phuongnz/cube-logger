@@ -1,0 +1,7 @@
+Sep 24 09:50:00 cube-d %SIP-5-DIALPEER_STATUS: VoIP dial-Peer <7000> is Up
+Sep 24 09:50:01 cube-d //-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:
+Sep 24 09:50:01 cube-d Sent:
+Sep 24 09:50:01 cube-d OPTIONS sip:192.0.2.50:5060 SIP/2.0
+Sep 24 09:50:01 cube-d Call-ID: 66778899-AABB@10.0.0.5
+Sep 24 09:50:01 cube-d Content-Length: 0
+Sep 24 09:50:01 cube-d 

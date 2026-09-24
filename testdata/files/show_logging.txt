@@ -1,0 +1,49 @@
+cube-a#terminal length 0
+cube-a#show logging
+Syslog logging: enabled (0 messages dropped, 3 messages rate-limited, 0 flushes, 0 overruns, xml disabled, filtering disabled)
+
+No Active Message Discriminator.
+
+No Inactive Message Discriminator.
+
+    Console logging: disabled
+    Monitor logging: level debugging, 0 messages logged, xml disabled,
+                     filtering disabled
+    Buffer logging:  level debugging, 6 messages logged, xml disabled,
+                     filtering disabled
+    Exception Logging: size (4096 bytes)
+    Count and timestamp logging messages: disabled
+    File logging: disabled
+    Persistent logging: disabled
+
+    Trap logging: level debugging, 6 message lines logged
+        Logging to 198.51.100.20  (udp port 5514, audit disabled,
+              link up),
+              6 message lines logged,
+              0 message lines rate-limited,
+              0 message lines dropped-by-MD,
+              xml disabled, sequence number enabled
+              filtering disabled
+
+Log Buffer (8000000 bytes):
+
+7001001: Sep 24 09:00:00.101: %SYS-5-CONFIG_I: Configured from console by eng1 on vty0 (10.0.0.9)
+7001002: Sep 24 09:00:01.204: //-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:
+Received:
+INVITE sip:15550100@10.0.0.1:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.0.2.10:5060;branch=z9hG4bK1A2B3C4D
+From: <sip:15550199@192.0.2.10>;tag=A1B2C3D4-111
+To: <sip:15550100@10.0.0.1>
+Call-ID: 11223344-5566@192.0.2.10
+CSeq: 101 INVITE
+Contact: <sip:15550199@192.0.2.10:5060>
+Content-Type: application/sdp
+Content-Length: 12
+
+v=0
+o=- 1 1 IN
+7001003: Sep 24 09:00:01.210: //1/11223344/CCAPI/cc_api_call_setup_ind_common:
+   Interface=0x7F0A1B2C3D, Call Info(Calling Number=15550199,Called Number=15550100)
+7001004: Sep 24 09:00:01.399: %SIP-5-DIALPEER_STATUS: VoIP dial-Peer <2000> is Up
+7001005: Sep 24 09:00:12.888: %SYS-6-LOGOUT: User eng1 has exited tty session 2(10.0.0.9)
+cube-a#

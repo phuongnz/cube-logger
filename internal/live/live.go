@@ -612,14 +612,15 @@ func (s *stream) finish(pr *parse.Record) *Record {
 	if pr.SIP != nil && pr.SIP.Truncated {
 		r.Incomplete = true
 	}
-	r.Call = legKey(pr)
+	r.Call = LegKey(pr)
 	return r
 }
 
-// legKey picks the identifier that ties a record to a leg, most specific
-// first. An inbound call's first INVITE has call entry ID -1, which is why the
+// LegKey picks the identifier that ties a record to a leg, most specific
+// first. The file path in internal/load answers the same question about the
+// same record, so it is one function, not two. An inbound call's first INVITE has call entry ID -1, which is why the
 // SIP Call-ID has to be a fallback and not an afterthought.
-func legKey(r *parse.Record) string {
+func LegKey(r *parse.Record) string {
 	if r.Cover != nil && r.Cover.CallID > 0 {
 		return strconv.FormatInt(r.Cover.CallID, 10)
 	}

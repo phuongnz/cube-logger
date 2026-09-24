@@ -1,0 +1,11 @@
+<191>7004001: Sep 24 09:30:00.100: //-1/xxxxxxxxxxxx/SIP/Msg/ccsipDisplayMsg:
+<191>Sent:
+<191>OPTIONS sip:192.0.2.30:5060 SIP/2.0
+<191>Via: SIP/2.0/UDP 10.0.0.3:5060;branch=z9hG4bKD4E5F6A7
+<191>From: <sip:10.0.0.3>;tag=D4E5F6A7-444
+<191>To: <sip:192.0.2.30>
+<191>Call-ID: 44556677-8899@10.0.0.3
+<191>CSeq: 104 OPTIONS
+<191>Content-Length: 0
+<191>
+<189>7004002: Sep 24 09:30:01.550: %SIP-5-DIALPEER_STATUS: VoIP dial-Peer <5000> is Up

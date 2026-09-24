@@ -606,6 +606,12 @@ func banner(s string) (host string, ok bool) {
 			return "", true
 		}
 	}
+	// Several of those lines wrap, and the wrapped part is indented far past
+	// anything a record starts with. Inside the preamble — and only there —
+	// an indented line is more of the line above.
+	if strings.HasPrefix(s, "    ") {
+		return "", true
+	}
 	return "", false
 }
 
