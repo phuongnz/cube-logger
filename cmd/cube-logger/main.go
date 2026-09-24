@@ -1,10 +1,12 @@
 // Command cube-logger is a live syslog and debug viewer for Cisco CUBE.
 //
 // "live" listens for syslog datagrams, reassembles them into records and serves
-// a table of them to a browser on this machine. "replay" sends a saved log to
-// that listener one datagram per line, which is how the live path is exercised
-// without a router. "parse" reads a saved log offline, and "sanitize" rewrites
-// a capture into something safe to commit.
+// a table of them to a browser on this machine. "open" does the same for saved
+// files — a "show logging" capture, a file some other syslog server wrote, or a
+// session this tool saved — so that a file and a stream get the same views.
+// "replay" sends a saved log to the listener one datagram per line, which is how
+// the live path is exercised without a router. "parse" reads a saved log
+// offline, and "sanitize" rewrites a capture into something safe to commit.
 package main
 
 import (
@@ -17,6 +19,8 @@ import (
 	"time"
 
 	"github.com/phuongnz/cube-logger/internal/correlate"
+	"github.com/phuongnz/cube-logger/internal/live"
+	"github.com/phuongnz/cube-logger/internal/load"
 	"github.com/phuongnz/cube-logger/internal/parse"
 	"github.com/phuongnz/cube-logger/internal/sanitize"
 )
@@ -34,6 +38,8 @@ func main() {
 		err = sanitizeCmd(os.Args[2:])
 	case "live":
 		err = liveCmd(os.Args[2:])
+	case "open":
+		err = openCmd(os.Args[2:])
 	case "replay":
 		err = replayCmd(os.Args[2:])
 	case "-h", "--help", "help":
@@ -54,6 +60,7 @@ func usage() {
 
 usage:
   cube-logger live [flags]              listen for syslog and open a live view in a browser
+  cube-logger open [flags] <file>...    open saved logs or a saved session in the same views
   cube-logger replay [flags] <file>     send a saved log to a listener, one datagram per line
   cube-logger parse [flags] <file>      parse a saved log and print records and calls
   cube-logger sanitize [flags] <file>   rewrite a capture so it is safe to commit
@@ -78,6 +85,8 @@ func parseCmd(args []string) error {
 	keepalives := fs.Bool("keepalives", false, "include OPTIONS keepalives in the call list")
 	year := fs.Int("year", 0, "calendar year of the first record (IOS does not log one; 0 means this year)")
 	source := fs.String("source", "", "name for the device this file came from (default: the file name)")
+	var names labelList
+	fs.Var(&names, "name", "rename a device, as address=name (repeatable)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -85,23 +94,20 @@ func parseCmd(args []string) error {
 		return fmt.Errorf("parse needs exactly one file (or \"-\")")
 	}
 	name := fs.Arg(0)
-	src := *source
-	if src == "" {
-		src = name
-	}
 
-	f, err := open(name)
+	// One reader for every kind of file: a terminal capture, whatever a syslog
+	// server wrote, and a session this tool saved. An engineer should not have
+	// to know which one they were handed.
+	o, err := openFile(name, load.Options{Year: *year, Source: *source, Rename: names.rename})
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
-	res, err := parse.Reader(f, src, *year)
-	if err != nil {
-		return err
+	recs := make([]*parse.Record, 0, len(o.records))
+	for _, r := range o.records {
+		recs = append(recs, r.Record)
 	}
 	c := correlate.New()
-	for _, r := range res.Records {
+	for _, r := range recs {
 		c.Add(r)
 	}
 	grouped := c.Result()
@@ -109,34 +115,45 @@ func parseCmd(args []string) error {
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(output{Result: res, Calls: grouped.Calls, Unattached: grouped.Unattached})
+		return enc.Encode(output{
+			Source: name, Format: o.format, Lines: o.lines, Records: recs,
+			Orphans: o.orphans, Sources: o.sources, Notes: o.notes,
+			Calls: grouped.Calls, Unattached: grouped.Unattached,
+		})
 	}
 
 	showRecords, showCalls := !*calls, !*records
-	printSummary(name, res, grouped)
+	printSummary(name, o, recs, grouped)
 	if showRecords {
-		printRecords(res.Records)
+		printRecords(recs)
 	}
 	if showCalls {
-		printCalls(grouped, res.Records, *keepalives)
+		printCalls(grouped, recs, *keepalives)
 	}
 	return nil
 }
 
-// output is the -json shape: the parse result with the correlator's answer
-// folded into it.
+// output is the -json shape: what the file was, what came out of it, and the
+// correlator's answer folded in.
 type output struct {
-	*parse.Result
+	Source     string            `json:"source,omitempty"`
+	Format     string            `json:"format,omitempty"`
+	Lines      int               `json:"lines"`
+	Records    []*parse.Record   `json:"records"`
+	Orphans    []string          `json:"orphans,omitempty"`
+	Sources    []live.SourceStat `json:"sources,omitempty"`
+	Notes      []string          `json:"notes,omitempty"`
 	Calls      []*correlate.Call `json:"calls"`
 	Unattached []uint64          `json:"unattached,omitempty"`
 }
 
-func printSummary(name string, res *parse.Result, grouped *correlate.Result) {
-	fmt.Printf("%s: %d lines, %d records, %d calls\n",
-		name, res.Lines, len(res.Records), len(grouped.Calls))
+func printSummary(name string, o *opened, records []*parse.Record, grouped *correlate.Result) {
+	fmt.Printf("%s: %s\n", name, o.format)
+	fmt.Printf("  %d line(s), %d record(s), %d call(s)\n",
+		o.lines, len(records), len(grouped.Calls))
 
 	debugs, logs := 0, 0
-	for _, r := range res.Records {
+	for _, r := range records {
 		switch r.Kind {
 		case parse.KindDebug:
 			debugs++
@@ -144,20 +161,23 @@ func printSummary(name string, res *parse.Result, grouped *correlate.Result) {
 			logs++
 		}
 	}
-	fmt.Printf("  %d debug, %d log, %d other\n", debugs, logs, len(res.Records)-debugs-logs)
+	fmt.Printf("  %d debug, %d log, %d other\n", debugs, logs, len(records)-debugs-logs)
 
-	// A session with log lines and no debug lines is the mistake every engineer
-	// makes once: "logging trap informational" keeps severity 7 off the wire.
-	if logs > 0 && debugs == 0 {
-		fmt.Println("  note: log lines but no debug lines — the device probably has " +
-			"\"logging trap informational\" set. Debug output is severity 7 and never leaves the box.")
+	// One line per device, because a file can hold more than one and their
+	// sequence numbers are not comparable.
+	for _, s := range o.sources {
+		lost := ""
+		if s.LostRecords > 0 {
+			lost = fmt.Sprintf(", %d record(s) lost or rate-limited", s.LostRecords)
+		}
+		fmt.Printf("  %s: %d record(s)%s\n", s.Source, s.Records, lost)
 	}
-	if n := len(res.Orphans); n > 0 {
+	for _, n := range o.notes {
+		fmt.Println("  note: " + n)
+	}
+	if n := len(o.orphans); n > 0 {
 		fmt.Printf("  %d line(s) before the first record, discarded "+
 			"(a \"show logging\" buffer that has wrapped starts mid-record)\n", n)
-	}
-	for _, g := range res.Gaps {
-		fmt.Println("  " + g.Reason())
 	}
 	fmt.Println()
 }

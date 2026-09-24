@@ -69,6 +69,9 @@ type Server struct {
 	// Calls is the live call index. It may be nil, in which case the call
 	// list is simply absent: parsing records is useful on its own.
 	Calls *calls.Index
+	// Sources is the per-device summary to show when there is no reassembler
+	// to ask: a file that was opened rather than a stream that is arriving.
+	Sources []live.SourceStat
 
 	// Title is shown in the browser tab and the header, so an engineer with
 	// two sessions open can tell them apart.
@@ -193,6 +196,8 @@ func (s *Server) status() status {
 	st := status{Title: s.Title, Store: s.Store.Stats()}
 	if s.Live != nil {
 		st.Sources = s.Live.Stats()
+	} else {
+		st.Sources = s.Sources
 	}
 	if st.Sources == nil {
 		st.Sources = []live.SourceStat{}
