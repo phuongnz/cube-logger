@@ -108,7 +108,7 @@
         "bodyBytes": 0
       },
       "warnings": [
-        "sequence gap: 3 record(s) missing between 5967501 and 5967505"
+        "sequence gap: 3 record(s) lost or rate-limited between 5967501 and 5967505"
       ]
     },
     {

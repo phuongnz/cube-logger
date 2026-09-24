@@ -132,7 +132,7 @@
         "callId": -1
       },
       "warnings": [
-        "sequence gap: 2 record(s) missing between 5967203 and 5967206"
+        "sequence gap: 2 record(s) lost or rate-limited between 5967203 and 5967206"
       ]
     },
     {

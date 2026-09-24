@@ -18,7 +18,20 @@ type Gap struct {
 	// Missing is how many records the numbering skipped, for KindLoss only.
 	Missing uint64 `json:"missing,omitempty"`
 	Kind    string `json:"kind"`
+	// Unit is what the counter counts: "" or UnitRecord for the counter inside
+	// the IOS frame, UnitLine for the outer, per-datagram counter on the UDP
+	// path. The two are different counters and saying which one broke is the
+	// difference between "a message is missing" and "a message is incomplete".
+	Unit string `json:"unit,omitempty"`
 }
+
+// What a sequence counter counts. See docs/log-format.md § The UDP path.
+const (
+	// UnitRecord is the counter inside the IOS frame: +1 per record.
+	UnitRecord = "record"
+	// UnitLine is the counter after <PRI> on the UDP path: +1 per line.
+	UnitLine = "line"
+)
 
 // The kinds of break, in descending order of how much they should worry a user.
 const (
@@ -37,9 +50,14 @@ const (
 func (g Gap) Reason() string {
 	switch g.Kind {
 	case GapLoss:
-		return "sequence gap: " + strconv.FormatUint(g.Missing, 10) +
-			" record(s) missing between " + strconv.FormatUint(g.After, 10) +
-			" and " + strconv.FormatUint(g.Before, 10)
+		// "lost or rate-limited", never "lost": this router rate-limits its own
+		// logging, and whether a rate-limited message still consumes a sequence
+		// number is open question 2 in docs/log-format.md. Telling an engineer
+		// they have a network problem while their router throttles itself sends
+		// them looking in the wrong place.
+		return "sequence gap: " + strconv.FormatUint(g.Missing, 10) + " " +
+			g.unit() + "(s) lost or rate-limited between " +
+			strconv.FormatUint(g.After, 10) + " and " + strconv.FormatUint(g.Before, 10)
 	case GapBackwards:
 		return "sequence went backwards: " + strconv.FormatUint(g.After, 10) +
 			" then " + strconv.FormatUint(g.Before, 10) +
@@ -51,11 +69,23 @@ func (g Gap) Reason() string {
 	}
 }
 
+// unit is the noun for what this counter counts, defaulting to records.
+func (g Gap) unit() string {
+	if g.Unit == UnitLine {
+		return UnitLine
+	}
+	return UnitRecord
+}
+
 // SeqTracker follows one source's sequence numbers and reports the breaks.
 // It is the only loss detector there is: IOS rate limiting and buffer overruns
 // drop records silently, and on the UDP path so does the network.
 type SeqTracker struct {
 	Gaps []Gap
+
+	// Unit is stamped onto every gap this tracker reports. The zero value means
+	// UnitRecord, which is what the counter in the IOS frame counts.
+	Unit string
 
 	last uint64
 	seen bool
@@ -68,7 +98,7 @@ func (t *SeqTracker) Observe(seq uint64) (Gap, bool) {
 	if !seen || seq == prev+1 {
 		return Gap{}, false
 	}
-	g := Gap{After: prev, Before: seq}
+	g := Gap{After: prev, Before: seq, Unit: t.Unit}
 	switch {
 	case seq <= prev:
 		g.Kind = GapBackwards
@@ -79,4 +109,15 @@ func (t *SeqTracker) Observe(seq uint64) (Gap, bool) {
 	}
 	t.Gaps = append(t.Gaps, g)
 	return g, true
+}
+
+// TakeGaps returns the gaps seen since the last call and forgets them.
+//
+// A file is parsed once and reads Gaps at the end; a live stream runs for days,
+// so it drains instead. Without this the slice is an unbounded accumulation of
+// every loss event in the session.
+func (t *SeqTracker) TakeGaps() []Gap {
+	g := t.Gaps
+	t.Gaps = nil
+	return g
 }

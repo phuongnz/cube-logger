@@ -392,3 +392,18 @@ func SplitFrame(line string) (frame, payload string, ok bool) {
 	}
 	return line[:n], line[n:], true
 }
+
+// TakeOrphans returns the orphan lines seen since the last call and forgets
+// them, for the same reason as SeqTracker.TakeGaps: on a live stream the
+// parser is flushed on an idle timeout, so a continuation arriving after a
+// flush becomes an orphan, and a process running for days must not accumulate
+// them forever.
+func (p *Parser) TakeOrphans() []string {
+	o := p.orphans
+	p.orphans = nil
+	return o
+}
+
+// TakeGaps returns the sequence-number gaps seen since the last call and
+// forgets them.
+func (p *Parser) TakeGaps() []Gap { return p.seq.TakeGaps() }
