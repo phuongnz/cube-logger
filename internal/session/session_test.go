@@ -11,6 +11,7 @@ import (
 
 	"github.com/phuongnz/cube-logger/internal/live"
 	"github.com/phuongnz/cube-logger/internal/load"
+	"github.com/phuongnz/cube-logger/internal/parse"
 	"github.com/phuongnz/cube-logger/internal/session"
 )
 
@@ -245,5 +246,45 @@ func TestEmptyAndHeaderOnly(t *testing.T) {
 	if len(got.Records) != 0 || got.Truncated {
 		t.Errorf("a session with no records: %d record(s), truncated = %v",
 			len(got.Records), got.Truncated)
+	}
+}
+
+func TestARecordWithNoIOSFrameIsStillHandedBack(t *testing.T) {
+	// Not everything in the ring came through the parser cleanly: a wrapped
+	// buffer starts mid-record, and a device without timestamps emits lines
+	// that cannot be framed. A session file that loses those on reload would
+	// be worse than one that hands them back as text.
+	rec := &live.Record{
+		Record:   &parse.Record{Source: "cube-a", Text: "no frame here", Raw: []string{"no frame here"}},
+		Severity: 6,
+		Received: time.Date(2026, 9, 24, 10, 0, 0, 0, time.UTC),
+		RawLines: []string{"no frame here"},
+	}
+	var buf bytes.Buffer
+	w, err := session.NewWriter(&buf, session.Header{Year: fixtureYear}, session.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Records(rec); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(nil); err != nil {
+		t.Fatal(err)
+	}
+	got, err := session.Read(bytes.NewReader(buf.Bytes()), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Records) != 1 {
+		t.Fatalf("%d record(s) back, want 1", len(got.Records))
+	}
+	if got.Records[0].Text != "no frame here" {
+		t.Errorf("text = %q", got.Records[0].Text)
+	}
+	if !got.Records[0].Received.Equal(rec.Received) {
+		t.Errorf("received = %v, want %v", got.Records[0].Received, rec.Received)
+	}
+	if len(got.Records[0].Warnings) == 0 {
+		t.Error("nothing said that this record could not be framed")
 	}
 }

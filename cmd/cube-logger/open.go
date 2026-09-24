@@ -83,16 +83,15 @@ func openCmd(args []string) error {
 
 	st := store.New(*capacity)
 	ix := calls.New(*maxCalls)
-	for _, e := range st.Add(recs...) {
-		if e.Record != nil && e.Record.Record != nil {
-			ix.Add(e.ID, e.Record.Record)
-		}
-	}
+	add := &feeder{st: st, ix: ix}
+	add.records(recs...)
 	srv := &web.Server{
 		Store:   st,
 		Calls:   ix,
 		Sources: sources,
 		Title:   titleOr(*title, fs.Args()),
+		Year:    *year,
+		Add:     add.records,
 	}
 	if err := web.Open(*httpAddr, srv); err != nil {
 		return fmt.Errorf("web: %w (is another cube-logger already running?)", err)

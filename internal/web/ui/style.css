@@ -305,3 +305,15 @@ main { flex: 1 1 auto; display: flex; min-height: 0; }
 .lad-item { cursor: default; }
 .lad-item:hover .lad-label { text-decoration: underline; }
 .lad-item.sel .lad-label { fill: var(--fg); font-weight: 700; }
+
+/* The one line of feedback a file needs: what was read, or why it was not.
+   It sits in the header beside the count and fades out by itself, because an
+   engineer opening a file is looking at the table, not at a dialog. */
+#notice {
+  max-width: 48ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#notice.bad { color: var(--bad); }
+#openfile { display: none; }

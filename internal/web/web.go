@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/phuongnz/cube-logger/internal/calls"
@@ -71,12 +72,23 @@ type Server struct {
 	Calls *calls.Index
 	// Sources is the per-device summary to show when there is no reassembler
 	// to ask: a file that was opened rather than a stream that is arriving.
+	// It is guarded by mu, because a file opened from the browser adds to it.
 	Sources []live.SourceStat
+
+	// Add is the one door into the store, so that records a browser opens from
+	// a file reach the call index in the same order they reach the ring. It
+	// may be nil, and then the browser cannot open a file into this session.
+	Add func(...*live.Record)
+
+	// Year is the calendar year a file opened from the browser belongs to; 0
+	// means this year. IOS prints no year.
+	Year int
 
 	// Title is shown in the browser tab and the header, so an engineer with
 	// two sessions open can tell them apart.
 	Title string
 
+	mu   sync.Mutex
 	mux  *http.Server
 	ln   net.Listener
 	addr string
@@ -149,6 +161,8 @@ func (s *Server) handler() http.Handler {
 	mux.HandleFunc("/api/calls", s.serveCalls)
 	mux.HandleFunc("/api/calls/{id}", s.serveCall)
 	mux.HandleFunc("/api/calls/{id}/text", s.serveCallText)
+	mux.HandleFunc("/api/session", s.serveSession)
+	mux.HandleFunc("/api/load", s.serveLoad)
 	return localOnly(mux)
 }
 
@@ -197,7 +211,9 @@ func (s *Server) status() status {
 	if s.Live != nil {
 		st.Sources = s.Live.Stats()
 	} else {
-		st.Sources = s.Sources
+		s.mu.Lock()
+		st.Sources = append([]live.SourceStat(nil), s.Sources...)
+		s.mu.Unlock()
 	}
 	if st.Sources == nil {
 		st.Sources = []live.SourceStat{}

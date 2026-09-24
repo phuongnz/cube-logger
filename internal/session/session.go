@@ -325,7 +325,22 @@ func (r *reader) record(e entry) *live.Record {
 	}
 	pr := p.Flush()
 	if pr == nil {
-		return nil
+		// Every line of this record was an orphan: it carries no IOS frame, so
+		// the parser cannot make a record of it. Nothing is dropped for that —
+		// a session file that quietly loses records is worse than one that
+		// hands back a line it could not read — so the entry becomes a record
+		// of its raw text, timed by whatever received it.
+		pr = &parse.Record{
+			Source: e.Source,
+			Time:   e.Received,
+			Kind:   parse.KindOther,
+			Text:   e.Raw[0],
+			Cont:   e.Raw[1:],
+			Raw:    e.Raw,
+			Warnings: []string{"this record carries no IOS timestamp, " +
+				"so it was read back from the session file as plain text"},
+		}
+		p.TakeOrphans() // else they accumulate for the life of the process
 	}
 	if r.n == nil {
 		r.n = map[string]uint64{}

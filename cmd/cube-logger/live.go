@@ -15,6 +15,7 @@ import (
 	"github.com/phuongnz/cube-logger/internal/calls"
 	"github.com/phuongnz/cube-logger/internal/listen"
 	"github.com/phuongnz/cube-logger/internal/live"
+	"github.com/phuongnz/cube-logger/internal/session"
 	"github.com/phuongnz/cube-logger/internal/store"
 	"github.com/phuongnz/cube-logger/internal/web"
 )
@@ -38,6 +39,10 @@ func liveCmd(args []string) error {
 	title := fs.String("title", "", "name for this session, shown in the browser tab")
 	year := fs.Int("year", 0, "calendar year (IOS does not log one; 0 means this year)")
 	quiet := fs.Bool("quiet", false, "do not print a line per source as it first appears")
+	save := fs.String("save", "", "also write every record to this session file as it arrives")
+	gz := fs.Bool("gzip", false, "compress the session file written by -save")
+	var names labelList
+	fs.Var(&names, "name", "rename a device, as address=name (repeatable)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -60,7 +65,25 @@ func liveCmd(args []string) error {
 	st := store.New(*capacity)
 	ix := calls.New(*maxCalls)
 	add := &feeder{st: st, ix: ix}
-	srv := &web.Server{Store: st, Live: re, Listener: ln, Calls: ix, Title: *title}
+	if *save != "" {
+		f, err := os.Create(*save)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		sw, err := session.NewWriter(f, session.Header{
+			Title:  *title,
+			Year:   *year,
+			Listen: ln.Addr(),
+		}, session.Options{Gzip: *gz || strings.HasSuffix(*save, ".gz")})
+		if err != nil {
+			return err
+		}
+		add.sw = sw
+		fmt.Printf("saving every record to %s\n", *save)
+	}
+	srv := &web.Server{Store: st, Live: re, Listener: ln, Calls: ix, Title: *title, Year: *year}
+	srv.Add = add.records
 	if err := web.Open(*httpAddr, srv); err != nil {
 		return fmt.Errorf("web: %w (is another cube-logger already running?)", err)
 	}
@@ -78,6 +101,9 @@ func liveCmd(args []string) error {
 	seen := map[string]bool{}
 	go func() {
 		errs <- ln.Run(ctx, func(d live.Datagram) {
+			if !names.empty() {
+				d.Source = names.rename(d.Source)
+			}
 			if !*quiet && !seen[d.Source] {
 				// Safe from the outside: only this goroutine touches `seen`.
 				seen[d.Source] = true
@@ -111,6 +137,12 @@ func liveCmd(args []string) error {
 	// store rather than dropped, so a -buffer dump after Ctrl-C is complete.
 	add.records(re.Flush()...)
 	printLiveSummary(ln, st, re, ix)
+	if add.sw != nil {
+		if cerr := add.sw.Close(re.Stats()); cerr != nil && err == nil {
+			err = cerr
+		}
+		fmt.Fprintf(os.Stderr, "  %d record(s) written to %s\n", add.sw.Count(), *save)
+	}
 	return err
 }
 
@@ -126,6 +158,10 @@ type feeder struct {
 	mu sync.Mutex
 	st *store.Store
 	ix *calls.Index
+	// sw is the session file, when one was asked for. It is written inside the
+	// same lock as the store, so the file is in the order the ring is in — and
+	// a session saved from a crash is still a session.
+	sw *session.Writer
 }
 
 func (f *feeder) records(recs ...*live.Record) {
@@ -137,6 +173,11 @@ func (f *feeder) records(recs ...*live.Record) {
 	for _, e := range f.st.Add(recs...) {
 		if e.Record != nil && e.Record.Record != nil {
 			f.ix.Add(e.ID, e.Record.Record)
+		}
+		if f.sw != nil {
+			// A failing disk must not stop the live view: the error surfaces
+			// when the file is closed.
+			_ = f.sw.Record(e.Record)
 		}
 	}
 }

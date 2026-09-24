@@ -27,6 +27,7 @@ const el = {
   conn: $('conn'), filter: $('filter'), severity: $('severity'), kind: $('kind'),
   source: $('source'), incomplete: $('incomplete'),
   pause: $('pause'), follow: $('follow'), clear: $('clear'), count: $('count'),
+  open: $('open'), save: $('save'), openfile: $('openfile'), notice: $('notice'),
   viewport: $('viewport'), spacer: $('spacer'), rows: $('rows'), empty: $('empty'),
   detail: $('detail'), detailTitle: $('detail-title'), detailMeta: $('detail-meta'),
   detailRaw: $('detail-raw'), detailClose: $('detail-close'),
@@ -935,6 +936,52 @@ el.callCopy.addEventListener('click', copyCall);
 el.callDownload.addEventListener('click', downloadCall);
 el.detailClose.addEventListener('click', closeDetail);
 
+// ----------------------------------------------------------------- files
+//
+// Saving is a download and opening is an upload, both of the server's own
+// session format. Nothing is read or written by this page directly: the server
+// owns the ring, so a file opened here goes in through the same door the
+// listener uses and comes back over the socket like any other record.
+
+let noticeTimer = null;
+
+function notice(text, bad) {
+  el.notice.textContent = text;
+  el.notice.classList.toggle('bad', !!bad);
+  el.notice.title = text;
+  clearTimeout(noticeTimer);
+  if (text) noticeTimer = setTimeout(() => notice(''), 12000);
+}
+
+el.save.addEventListener('click', () => {
+  // A navigation rather than fetch(): a long session is hundreds of megabytes
+  // and the browser streams it to disk instead of holding it in memory.
+  notice('saving this session…');
+  location.href = '/api/session';
+});
+
+el.open.addEventListener('click', () => el.openfile.click());
+
+el.openfile.addEventListener('change', async () => {
+  const f = el.openfile.files[0];
+  if (!f) return;
+  el.openfile.value = '';        // so the same file can be opened twice
+  notice(`reading ${f.name}…`);
+  try {
+    const r = await fetch(`/api/load?name=${encodeURIComponent(f.name)}`,
+                          { method: 'POST', body: f });
+    const text = await r.text();
+    if (!r.ok) { notice(text.trim() || `could not read ${f.name}`, true); return; }
+    const res = JSON.parse(text);
+    let msg = `${res.name}: ${res.records.toLocaleString()} record(s), ${res.format}`;
+    if (res.sources && res.sources.length) msg += ` — ${res.sources.join(', ')}`;
+    if (res.notes && res.notes.length) msg += ` · ${res.notes.join(' · ')}`;
+    notice(msg);
+  } catch (e) {
+    notice(`could not read ${f.name}: ${e}`, true);
+  }
+});
+
 for (const c of [el.severity, el.kind, el.source, el.incomplete]) {
   c.addEventListener('change', applyFilter);
 }
@@ -971,6 +1018,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') { if (!el.detail.hidden) closeDetail(); else closeCall(); }
   else if (e.key === 'c' || e.key === 'C') { el.callsToggle.click(); }
   else if (e.key === '/') { e.preventDefault(); el.filter.focus(); }
+  else if (e.key === 'o' || e.key === 'O') { el.open.click(); }
   else if (e.key === 'End') { setFollow(true); }
 });
 
