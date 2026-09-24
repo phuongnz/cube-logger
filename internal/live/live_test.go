@@ -291,6 +291,35 @@ func TestLostLineMakesAnIncompleteRecord(t *testing.T) {
 	}
 }
 
+// TestLossIsNotCountedAsReordering: every line behind a hole is parked before
+// anyone knows whether the hole is reordering or loss. Once it is given up on
+// as loss, those lines were in the order the device sent them all along.
+// Counting them would tell the engineer the network is shuffling datagrams
+// when it is only dropping them — and under real loss that is most of the
+// stream, so the number is not a rounding error.
+func TestLossIsNotCountedAsReordering(t *testing.T) {
+	r := New()
+	s := newSender("192.0.2.1")
+	dgs := s.invite("12:00:00.123", "aaaa-0009@192.0.2.20", sdp)
+
+	// Drop a line early, so most of the message queues up behind the hole.
+	const dropped = 3
+	kept := append(append([]string{}, dgs[:dropped]...), dgs[dropped+1:]...)
+	behind := len(kept) - dropped
+	feed(r, "192.0.2.1", 0, kept...)
+	r.Tick(at(1000))
+	r.Flush()
+
+	st := r.Stats()[0]
+	if st.LostLines != 1 {
+		t.Fatalf("LostLines = %d, want 1", st.LostLines)
+	}
+	if st.Reordered != 0 {
+		t.Errorf("Reordered = %d, want 0: %d line(s) queued behind the lost one, "+
+			"none of them out of order", st.Reordered, behind)
+	}
+}
+
 // TestLostRecordCountsOnTheInnerCounter: the two counters count different
 // things, and a gap in the inner one means whole records are gone.
 func TestLostRecordCountsOnTheInnerCounter(t *testing.T) {

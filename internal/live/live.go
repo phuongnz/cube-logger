@@ -148,7 +148,9 @@ type SourceStat struct {
 	// lost. Both are "lost or rate-limited" until open question 2 is settled.
 	LostLines   uint64 `json:"lostLines"`
 	LostRecords uint64 `json:"lostRecords"`
-	// Reordered is how many lines arrived out of order and were put back.
+	// Reordered is how many lines arrived before the line in front of them and
+	// were put back once it turned up. Lines released because that line never
+	// turned up are loss, not reordering, and are not counted here.
 	Reordered uint64 `json:"reordered"`
 	// Late is lines that arrived after their hole had already been given up on,
 	// and Duplicate is lines whose number had already been used. Both are
@@ -360,7 +362,7 @@ func (s *stream) datagram(payload string, now time.Time) []*Record {
 	case f.Seq == s.next:
 		out := s.feed(f, now)
 		s.next++
-		return append(out, s.drain(now)...)
+		return append(out, s.drain(now, true)...)
 
 	case f.Seq > s.next:
 		if f.Seq-s.next > maxPlausibleGap {
@@ -395,7 +397,9 @@ func (s *stream) hold(f wire.Frame, now time.Time) []*Record {
 		s.oldest = now
 	}
 	s.pending[f.Seq] = held{frame: f, at: now}
-	s.stat.Reordered++
+	// Not counted as reordered yet. A line parked behind a hole is only known
+	// to have arrived early once the hole fills; if it never does, the hole was
+	// loss and this line was in order all along. drain counts it on release.
 	// Holding too many lines behind one hole means the hole is loss, not
 	// reordering, and waiting out the window would stall the display.
 	return s.expire(now, false)
@@ -427,8 +431,11 @@ func (s *stream) restart(f wire.Frame, now time.Time) []*Record {
 	return out
 }
 
-// drain feeds every held line that is now contiguous.
-func (s *stream) drain(now time.Time) []*Record {
+// drain feeds every held line that is now contiguous. holeFilled says why they
+// are being released: true when the line in front of them arrived, which makes
+// them genuinely early, and false when that line was given up on as loss, which
+// leaves them in the order the device sent them.
+func (s *stream) drain(now time.Time, holeFilled bool) []*Record {
 	var out []*Record
 	for {
 		h, ok := s.pending[s.next]
@@ -436,6 +443,9 @@ func (s *stream) drain(now time.Time) []*Record {
 			break
 		}
 		delete(s.pending, s.next)
+		if holeFilled {
+			s.stat.Reordered++
+		}
 		out = append(out, s.feed(h.frame, h.at)...)
 		s.next++
 	}
@@ -459,14 +469,14 @@ func (s *stream) expire(now time.Time, byTime bool) []*Record {
 		lo := s.lowestPending()
 		if lo <= s.next {
 			// Defensive: drain should have taken it already.
-			out = append(out, s.drain(now)...)
+			out = append(out, s.drain(now, true)...)
 			continue
 		}
 		missing := lo - s.next
 		s.stat.LostLines += missing
 		s.cur.missing += missing
 		s.next = lo
-		out = append(out, s.drain(now)...)
+		out = append(out, s.drain(now, false)...)
 		s.oldest = now
 	}
 	if len(s.pending) == 0 {
@@ -492,7 +502,7 @@ func (s *stream) flush() []*Record {
 	if !s.have && len(s.pending) > 0 {
 		s.next, s.have = s.lowestPending(), true
 	}
-	out := s.drain(time.Time{})
+	out := s.drain(time.Time{}, false)
 	// Anything still held after a drain sits behind a hole that will never
 	// fill. Release it in order rather than losing it.
 	for len(s.pending) > 0 {
@@ -503,7 +513,7 @@ func (s *stream) flush() []*Record {
 			s.cur.missing += missing
 		}
 		s.next = lo
-		out = append(out, s.drain(time.Time{})...)
+		out = append(out, s.drain(time.Time{}, false)...)
 	}
 	return append(out, s.flushParser()...)
 }
