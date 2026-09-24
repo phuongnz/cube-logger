@@ -10,3 +10,10 @@
 .claude/skills/
 .agents/
 skills-lock.json
+
+# Raw CUBE captures (syslog, debug output, pcaps) contain sensitive data — never commit.
+# Only sanitized, reviewed fixtures go into testdata/.
+captures/
+*.log
+*.pcap
+*.pcapng
