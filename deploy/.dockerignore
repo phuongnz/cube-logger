@@ -1,0 +1,4 @@
+# The image needs the binary and nothing else. In particular .env and data/, which hold
+# the real addresses and the CA key, never reach the build context.
+*
+!cube-logger

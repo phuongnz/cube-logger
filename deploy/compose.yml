@@ -1,0 +1,33 @@
+# cube-logger on a server: syslog from a CUBE over UDP and TLS, and the web UI on the
+# server's own loopback, reached through an SSH tunnel. The values come from .env next to
+# this file (see env.example). README → "Running it on a server" has the steps.
+services:
+  cube-logger:
+    build: .
+    image: cube-logger:local
+    restart: unless-stopped
+    # Host networking, so the listener sees each router's real source address, which
+    # is what -allow checks and how devices are told apart. It also means 127.0.0.1
+    # below is the server's own loopback, which is where the tunnel arrives.
+    network_mode: host
+    # Not root: every port below is above 1024. The owner of ./data.
+    user: "${RUN_AS:-1000:1000}"
+    volumes:
+      - ./data:/data
+    command:
+      - live
+      - -listen=${UDP:-:5514}
+      - -tls=${TLS-:6514}
+      - -tls-dir=/data/tls
+      - -tls-name=${PUBLIC_ADDR:?set PUBLIC_ADDR in .env}
+      # Required on purpose. On a public address, a listener without an allowlist takes
+      # forged lines from anyone who finds the port.
+      - -allow=${ALLOW:?set ALLOW in .env}
+      - -http=127.0.0.1:8514
+    # Each refused handshake and each new source is a line of output. A port the internet
+    # can reach hears from scanners, and this keeps that from filling the disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

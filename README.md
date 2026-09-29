@@ -41,7 +41,8 @@ go build ./cmd/cube-logger
 - Several CUBEs at once, told apart by source address or hostname, each with its own sequence
   numbering and its own line in the status bar. `-name 198.51.100.9=cube-a` puts a name on an
   address. **Working.**
-- Runs locally. Nothing leaves your machine. **Working.**
+- Runs on your own machine, or on a server of your own ([below](#running-it-on-a-server)). It
+  sends nothing anywhere. **Working.**
 
 ## Sending CUBE logs to cube-logger
 
@@ -173,6 +174,49 @@ cube-logger replay -tls testdata/basic_call.txt
 
 `replay -tls` checks the certificate the way a router does, against the authority and for the
 address it dials. It offers only TLS 1.2 and the cipher suites the router configuration names.
+
+## Running it on a server
+
+When the CUBE should log somewhere that is always on, rather than to your laptop, `deploy/` runs
+cube-logger in a container on a Linux server with Docker. The syslog ports face the router. The
+web UI stays on the server's loopback, and you reach it through an SSH tunnel. Nobody else can
+open it, and the UI refuses a client that is not local anyway.
+
+**1. Build it and copy it over:**
+
+```
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o deploy/cube-logger ./cmd/cube-logger
+scp deploy/cube-logger deploy/Dockerfile deploy/compose.yml deploy/env.example you@203.0.113.5:cube-logger/
+```
+
+**2. On the server:**
+
+```
+cd cube-logger
+cp env.example .env     # set PUBLIC_ADDR to the server's address and ALLOW to the router's
+mkdir data              # before the first start, so it belongs to you and not to root
+docker compose build
+docker compose run --rm cube-logger cert -tls-dir /data/tls -tls-name 203.0.113.5
+docker compose up -d
+```
+
+`cert` is only needed for TLS. It prints the router side as in the section above. `ALLOW` is
+required, since on a public address a listener without one takes forged lines from anyone. UDP
+listens on 5514 and TLS on 6514, so let those through the server's firewall and any cloud firewall
+in front of it.
+
+**3. Point the router at it:** `logging host 203.0.113.5 transport udp port 5514`, or the TLS
+configuration above. UDP crosses the internet in the clear.
+
+**4. Open the UI** from your own machine:
+
+```
+ssh -N -L 8514:127.0.0.1:8514 you@203.0.113.5
+```
+
+Then browse to http://127.0.0.1:8514. `docker compose logs -f` shows the listener's own output:
+new sources, TLS failures, gaps. To update, build and copy the binary again, then run
+`docker compose up -d --build`. A restart empties the log table, since records are kept in memory.
 
 ## Opening saved files
 

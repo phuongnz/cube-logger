@@ -17,3 +17,9 @@ captures/
 *.log
 *.pcap
 *.pcapng
+
+# A server deployment's own files: its real addresses, its certificates and CA key, and the
+# binary built for it. deploy/env.example is the template that is committed.
+deploy/.env
+deploy/data/
+deploy/cube-logger
