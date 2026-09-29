@@ -438,6 +438,36 @@ func TestWebSocketSinceSkipsWhatTheBrowserHas(t *testing.T) {
 	}
 }
 
+// A restarted server numbers its records from 1 again. A browser that was
+// open across the restart asks for what came after its last ID, and without
+// the epoch the new server would take that ID as its own and send nothing
+// until it caught up with a number from another process.
+func TestWebSocketStartsOverForAnIDFromAnotherStore(t *testing.T) {
+	s := &Server{Store: store.New(100)}
+	srv := serve(t, s)
+	s.Store.Add(rec("a", "192.0.2.1", "", 6), rec("b", "192.0.2.1", "", 6), rec("c", "192.0.2.1", "", 6))
+	epoch := s.Store.Stats().Epoch
+
+	c := dial(t, srv, "/ws?since=2&epoch="+epoch)
+	c.read() // hello
+	if got := entryIDs(t, c.readType("records")); fmt.Sprint(got) != "[3]" {
+		t.Errorf("resume from 2 in this store gave %v, want only id 3", got)
+	}
+
+	c = dial(t, srv, "/ws?since=2&epoch=another-store")
+	hello := c.read()
+	if hello["type"] != "hello" {
+		t.Fatalf("first message is %v", hello["type"])
+	}
+	st, _ := hello["status"].(map[string]any)
+	if sto, _ := st["store"].(map[string]any); sto["epoch"] != epoch {
+		t.Errorf("hello says epoch %v, want %q so the browser can tell it restarted", sto["epoch"], epoch)
+	}
+	if got := entryIDs(t, c.readType("records")); fmt.Sprint(got) != "[1 2 3]" {
+		t.Errorf("an ID from another store gave %v, want everything, as for a new browser", got)
+	}
+}
+
 func TestWebSocketReportsEvictionAsResyncNotAsLoss(t *testing.T) {
 	s := &Server{Store: store.New(4)}
 	srv := serve(t, s)

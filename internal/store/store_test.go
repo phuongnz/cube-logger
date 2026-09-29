@@ -208,6 +208,7 @@ func TestCloseIsIdempotentAndUnsubscribes(t *testing.T) {
 func TestClearEmptiesTheRingButKeepsIDsAscending(t *testing.T) {
 	s := New(10)
 	s.Add(rec("192.0.2.1", "one", 6))
+	before := s.Stats().Epoch
 	s.Clear()
 	if st := s.Stats(); st.Records != 0 {
 		t.Errorf("Records = %d after Clear, want 0", st.Records)
@@ -215,6 +216,26 @@ func TestClearEmptiesTheRingButKeepsIDsAscending(t *testing.T) {
 	got := s.Add(rec("192.0.2.1", "two", 6))
 	if got[0].ID != 2 {
 		t.Errorf("ID = %d after Clear, want 2: a clear is not a restart", got[0].ID)
+	}
+	if after := s.Stats().Epoch; after != before {
+		t.Errorf("epoch changed on Clear (%q -> %q): a clear is not a restart", before, after)
+	}
+}
+
+// A restart is a new store, and its IDs start at 1 again. The epoch is what
+// tells a browser holding ID 500 that this 500 is not that one.
+func TestEveryStoreHasItsOwnEpoch(t *testing.T) {
+	a, b := New(10), New(10)
+	ea, eb := a.Stats().Epoch, b.Stats().Epoch
+	if ea == "" || eb == "" {
+		t.Fatalf("epochs %q and %q: a store must have one", ea, eb)
+	}
+	if ea == eb {
+		t.Errorf("two stores share epoch %q", ea)
+	}
+	ida, idb := a.Add(rec("192.0.2.1", "one", 6)), b.Add(rec("192.0.2.1", "one", 6))
+	if ida[0].ID != idb[0].ID {
+		t.Fatalf("IDs %d and %d: the test assumes both stores number from the same place", ida[0].ID, idb[0].ID)
 	}
 }
 

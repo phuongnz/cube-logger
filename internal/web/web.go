@@ -375,15 +375,25 @@ func (s *Server) serveWS(w http.ResponseWriter, r *http.Request) {
 	sub := s.Store.Subscribe(0)
 	defer sub.Close()
 
-	if err := send(conn, helloMsg{Type: "hello", Status: s.status()}); err != nil {
+	hello := helloMsg{Type: "hello", Status: s.status()}
+	if err := send(conn, hello); err != nil {
 		return
 	}
 
-	// A browser reconnecting after a dropped socket says where it got to.
+	// A browser reconnecting after a dropped socket says where it got to, and
+	// in which store. An ID from another store — this process before it was
+	// restarted — says nothing about this one, so that browser starts over
+	// like a new one. The hello it just got carries the new epoch and tells it
+	// to. A browser that sends no epoch is taken at its word, as before.
+	q := r.URL.Query()
+	since := q.Get("since")
+	if e := q.Get("epoch"); e != "" && e != hello.Status.Store.Epoch {
+		since = ""
+	}
 	var last uint64
 	var initial []store.Entry
-	if v := r.URL.Query().Get("since"); v != "" {
-		after, _ := strconv.ParseUint(v, 10, 64)
+	if since != "" {
+		after, _ := strconv.ParseUint(since, 10, 64)
 		var missed uint64
 		initial, missed = s.Store.Since(after, resyncLimit)
 		if missed > 0 {

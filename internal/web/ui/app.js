@@ -47,6 +47,7 @@ const state = {
   view: [],           // the filtered slice the table shows
   held: [],           // records arriving while paused
   lastId: 0,          // highest record id seen, for resuming after a drop
+  epoch: null,        // which server store lastId belongs to; a restart changes it
   paused: false,
   follow: true,
   selected: null,
@@ -849,29 +850,36 @@ let retry = 500;
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   // Resuming by id is what makes a dropped socket invisible: the server sends
-  // what was missed instead of the browser starting over.
-  const since = state.lastId ? `?since=${state.lastId}` : '';
+  // what was missed instead of the browser starting over. The epoch goes with
+  // it, because an id only means something in the store that gave it.
+  const since = state.lastId
+    ? `?since=${state.lastId}&epoch=${encodeURIComponent(state.epoch || '')}` : '';
   setConn('connecting', '');
   sock = new WebSocket(`${proto}//${location.host}/ws${since}`);
 
   sock.onopen = () => {
     retry = 500;
     setConn('live', 'live');
-    // The server does not remember a browser across a dropped socket, so the
-    // open call is announced again rather than quietly going stale.
-    tellServer();
   };
 
   sock.onmessage = (ev) => {
     let m;
     try { m = JSON.parse(ev.data); } catch { return; }
     switch (m.type) {
-      case 'hello':
+      case 'hello': {
+        const epoch = m.status && m.status.store && m.status.store.epoch;
+        if (epoch && state.epoch && epoch !== state.epoch) restarted();
+        if (epoch) state.epoch = epoch;
         if (m.status && m.status.title) {
           document.title = `${m.status.title} — cube-logger`;
         }
         showStatus(m.status || {});
+        // The server does not remember a browser across a dropped socket, so
+        // the open call is announced again rather than quietly going stale.
+        // It waits for the hello: after a restart there is no open call left.
+        tellServer();
         break;
+      }
       case 'records':
         addRecords(m.records || []);
         break;
@@ -913,6 +921,25 @@ function connect() {
     retry = Math.min(retry * 2, 10000);
   };
   sock.onerror = () => { try { sock.close(); } catch {} };
+}
+
+// restarted forgets everything this page holds, because the server it came
+// from is gone. The new one numbers its records and its calls from 1 again, so
+// record 500 and call-7 on screen are not record 500 and call-7 there, and
+// keeping them would hide the new records behind the old ids.
+function restarted() {
+  state.all = []; state.view = []; state.held = [];
+  state.byId.clear();
+  state.lastId = 0;
+  state.sources.clear();
+  refreshSources();
+  state.calls.clear();
+  state.callId = null; state.call = null; state.callRefs = null;
+  renderCalls();
+  showCall(null);
+  closeDetail();
+  applyFilter();
+  notice('cube-logger was restarted, so this view starts again from what it holds now');
 }
 
 function setConn(text, cls) {

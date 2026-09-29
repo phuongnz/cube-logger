@@ -70,10 +70,13 @@ else
 fi
 
 # The UI has no build step and no test runner, which is the point: one binary,
-# no toolchain. The cost is that a syntax error in app.js is invisible until a
-# browser silently renders nothing, so it is checked here when a JavaScript
-# engine happens to be installed. Nothing is installed to make this run, and a
-# machine without one is not a failure.
+# no toolchain. The cost is that a mistake in app.js is invisible until a
+# browser silently renders nothing, so node is used when it happens to be
+# installed. Nothing is installed to make this run, and a machine without it is
+# not a failure. Two checks use it:
+#   - here, that app.js parses;
+#   - in go test above, internal/web/ui_test.go runs app.js on what a real
+#     server sends and checks the table and the ladder. It skips without node.
 if command -v node >/dev/null 2>&1; then
   echo "== ui syntax =="
   if node --check internal/web/ui/app.js; then
@@ -82,7 +85,7 @@ if command -v node >/dev/null 2>&1; then
     fail=1
   fi
 else
-  echo "== ui syntax == (skipped: no node on this machine)"
+  echo "== ui syntax == (skipped: no node on this machine, and go test skipped the page too)"
 fi
 
 exit "$fail"

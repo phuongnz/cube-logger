@@ -10,9 +10,14 @@
 // Every record gets a monotonic ID. That is what makes the browser's life
 // simple: it remembers the last ID it drew, and after a hiccup it asks for
 // everything since, instead of trying to reconcile two streams.
+//
+// IDs start at 1 in every store, and a restart is a new store, so an ID alone
+// does not say which store it came from. Each store has a random epoch for
+// that: an ID means something only next to the epoch it was given under.
 package store
 
 import (
+	"crypto/rand"
 	"strings"
 	"sync"
 
@@ -54,6 +59,9 @@ type Stats struct {
 	Newest uint64 `json:"newest"`
 	// Watchers is how many browsers are subscribed.
 	Watchers int `json:"watchers"`
+	// Epoch names this store. It changes when the process restarts and not
+	// when the ring is cleared.
+	Epoch string `json:"epoch"`
 }
 
 // Store is the session's records. It is safe for concurrent use.
@@ -64,6 +72,8 @@ type Store struct {
 	head int // index of the oldest entry
 	n    int
 	next uint64 // ID of the next record stored
+
+	epoch string
 
 	total, evicted, lines uint64
 
@@ -77,10 +87,11 @@ func New(capacity int) *Store {
 		capacity = DefaultCap
 	}
 	return &Store{
-		cap:  capacity,
-		buf:  make([]Entry, capacity),
-		next: 1,
-		subs: map[uint64]*Sub{},
+		cap:   capacity,
+		buf:   make([]Entry, capacity),
+		next:  1,
+		epoch: rand.Text(),
+		subs:  map[uint64]*Sub{},
 	}
 }
 
@@ -137,6 +148,7 @@ func (s *Store) Stats() Stats {
 		Lines:    s.lines,
 		Evicted:  s.evicted,
 		Watchers: len(s.subs),
+		Epoch:    s.epoch,
 	}
 	if s.n > 0 {
 		st.Oldest = s.buf[s.head].ID
@@ -201,8 +213,8 @@ func (s *Store) Since(after uint64, max int) (entries []Entry, missed uint64) {
 	return out, missed
 }
 
-// Clear empties the ring. IDs keep ascending, so a watcher can tell a clear
-// from a restart.
+// Clear empties the ring. IDs keep ascending and the epoch stays, so a
+// watcher can tell a clear from a restart.
 func (s *Store) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
