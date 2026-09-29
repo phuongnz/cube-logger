@@ -575,8 +575,8 @@ function drawLadder(l) {
 
   items.forEach((it, i) => {
     const y = LAD.top + i * LAD.row + LAD.row / 2;
-    const g = svg('g', { class: 'lad-item', 'data-ref': src.ref || 0 });
     const src = it.a || it.n;
+    const g = svg('g', { class: 'lad-item', 'data-ref': src.ref || 0 });
     g.appendChild(svg('text', { x: 4, y: y + 4, class: 'lad-time' }, clockTime(src.time)));
 
     if (it.n) {
