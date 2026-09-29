@@ -4,9 +4,11 @@
 // a table of them to a browser on this machine. "open" does the same for saved
 // files — a "show logging" capture, a file some other syslog server wrote, or a
 // session this tool saved — so that a file and a stream get the same views.
-// "replay" sends a saved log to the listener one datagram per line, which is how
-// the live path is exercised without a router. "parse" reads a saved log
+// "replay" sends a saved log to the listener one datagram per line, or one TLS
+// message per line, which is how the live path is exercised without a router. "parse" reads a saved log
 // offline, and "sanitize" rewrites a capture into something safe to commit.
+// "cert" makes the certificates syslog over TLS needs and prints the router
+// configuration that trusts them.
 package main
 
 import (
@@ -42,6 +44,8 @@ func main() {
 		err = openCmd(os.Args[2:])
 	case "replay":
 		err = replayCmd(os.Args[2:])
+	case "cert":
+		err = certCmd(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -61,7 +65,8 @@ func usage() {
 usage:
   cube-logger live [flags]              listen for syslog and open a live view in a browser
   cube-logger open [flags] <file>...    open saved logs or a saved session in the same views
-  cube-logger replay [flags] <file>     send a saved log to a listener, one datagram per line
+  cube-logger replay [flags] <file>     send a saved log to a listener, one datagram (or TLS message) per line
+  cube-logger cert [flags]              make the TLS certificates and print the router config for them
   cube-logger parse [flags] <file>      parse a saved log and print records and calls
   cube-logger sanitize [flags] <file>   rewrite a capture so it is safe to commit
 

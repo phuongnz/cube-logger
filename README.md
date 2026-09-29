@@ -14,12 +14,16 @@ SBCs.
 go build ./cmd/cube-logger
 ./cube-logger live                      # listens on :5514/udp, opens on http://127.0.0.1:8514
 ./cube-logger live -save today.cubelog  # …and keeps every record, to open again later
+./cube-logger live -tls :6514           # …and receives syslog over TLS too (see below)
 ./cube-logger open capture.txt          # a saved log or session, in the same views
 ```
 
 ## Features
 
 - Receives syslog and debug output from a CUBE over UDP, live. **Working.**
+- Receives it over TLS too (RFC 5425, IOS-XE 17.2.1 or later), for a CUBE that reaches this
+  machine across a network you do not control. `cube-logger cert` makes the certificates and
+  prints the router configuration. **Working, but not yet tried against a real router.**
 - Log table with colors by severity and type, text and severity filters, and pause and
   auto-scroll. It stays fast with 100k+ lines. **Working.**
 - Call list with time, from, to, duration and result; pick a call to see only its lines.
@@ -67,6 +71,108 @@ debug voip ccapi inout
 
 Debugs use CPU. On a busy production CUBE, keep them short and switch them off afterwards with
 `undebug all`.
+
+## Sending CUBE logs over TLS
+
+UDP syslog is plain text. Anyone on the path can read the phone numbers, addresses and SIP
+headers in it, and anyone can send datagrams that look like they came from your router. That is
+fine on a lab network or over a VPN. When the CUBE reaches this machine across the internet, use
+TLS instead. It needs IOS-XE 17.2.1 or later.
+
+> Not yet tried against a real router. The router side below follows Cisco's documentation, and
+> the tool is tested against a client that behaves the way that documentation describes. What is
+> still unknown is listed in [the open questions](docs/log-format.md#open-questions).
+
+**1. Make the certificates** on the machine that runs cube-logger, naming the address the router
+will connect to:
+
+```
+cube-logger cert -tls-name 203.0.113.5
+```
+
+The first run makes a certificate authority and a server certificate issued by it, and keeps them
+in `cube-logger/tls` under your configuration directory: `%AppData%` on Windows,
+`~/Library/Application Support` on macOS, `~/.config` on Linux. `-tls-dir` puts them somewhere
+else. It prints the authority's fingerprints, the certificate to paste, and the router
+configuration below with your address and port filled in. Running it again prints the same thing
+and makes nothing new.
+
+**2. Make the router trust the authority.** Once per router, in configuration mode:
+
+```
+crypto pki trustpoint CUBE-LOGGER
+ enrollment terminal
+ revocation-check none
+ chain-validation stop
+crypto pki authenticate CUBE-LOGGER
+```
+
+Paste the certificate that `cube-logger cert` printed, then an empty line. Answer yes only if the
+fingerprints the router shows are the ones `cube-logger cert` printed.
+
+**3. Send logging over TLS:**
+
+```
+logging tls-profile CUBE-LOGGER
+ tls-version TLSv1.2
+ ciphersuite ecdhe-rsa-aes-gcm-sha2
+logging host 203.0.113.5 transport tls port 6514 profile CUBE-LOGGER
+```
+
+Keep the rest of the configuration from the section above: `logging trap debugging`,
+`service sequence-numbers` and the timestamps. Remove the UDP `logging host`. With both, the router
+sends every line twice, and one copy in the clear.
+
+The cipher suite is not a preference. It is the one IOS-XE keyword that matches what cube-logger
+serves over TLS 1.2 with its RSA certificate.
+
+**4. Listen:**
+
+```
+cube-logger live -tls :6514 -listen off -allow 198.51.100.7
+```
+
+`-allow` is the router's address as it arrives at this machine. A connection from anywhere else is
+closed before any TLS is spoken. `-listen off` turns UDP off. Leave it out to receive both.
+
+The router opens a TCP connection to port 6514, so let that through this machine's firewall.
+Behind NAT, forward the port from the public address to this machine, and name the public address
+with `-tls-name`. The certificate always names this machine's own addresses. It has to name the
+one the router connects to as well. Whether IOS-XE checks this is one of the open questions, and
+naming it costs nothing.
+
+**When it does not connect**, the terminal says why. Each failed handshake is printed with what the
+router offered and the line to change on the router: a missing `transport tls`, a cipher suite
+the two sides do not share, or a certificate the router does not trust. The same failure from the
+same address is printed once every five minutes, so a retrying router or a port scanner does not
+bury the screen. The count at exit includes every one.
+
+**Other flags** for `live`:
+
+| Flag | What it does |
+| --- | --- |
+| `-tls-name` | Another address or host name for the certificate (repeatable). The first one is its common name. |
+| `-tls-dir` | Where the certificates are kept. |
+| `-tls-cert`, `-tls-key` | Serve your own certificate, issued by your own CA, instead of the one cube-logger makes. |
+| `-tls-client-ca` | Accept only routers that present a certificate issued by this CA. On the router, that is `client-id-trustpoint` in the tls-profile. |
+
+**About the certificates.** A router's trust rests on `ca-key.pem`, so it never leaves this
+machine. cube-logger never replaces the authority on its own. If `ca.pem` is unreadable, has
+expired or does not match its key, cube-logger stops and says so rather than making a new one,
+because every router would have to import it. If `ca.pem` is gone, a new authority is made, and
+the startup banner says no router trusts it yet. The server certificate is different. It is remade whenever this machine's addresses or the `-tls-name` list
+change, and 30 days before it expires. Routers need nothing for that, because they trust the
+authority.
+
+**Try it without a router:**
+
+```
+cube-logger live -tls :6514
+cube-logger replay -tls testdata/basic_call.txt
+```
+
+`replay -tls` checks the certificate the way a router does, against the authority and for the
+address it dials. It offers only TLS 1.2 and the cipher suites the router configuration names.
 
 ## Opening saved files
 

@@ -29,6 +29,7 @@ const el = {
   pause: $('pause'), follow: $('follow'), clear: $('clear'), count: $('count'),
   open: $('open'), save: $('save'), openfile: $('openfile'), notice: $('notice'),
   viewport: $('viewport'), spacer: $('spacer'), rows: $('rows'), empty: $('empty'),
+  emptyHint: $('empty-hint'),
   detail: $('detail'), detailTitle: $('detail-title'), detailMeta: $('detail-meta'),
   detailRaw: $('detail-raw'), detailClose: $('detail-close'),
   statusStore: $('status-store'), statusSources: $('status-sources'),
@@ -775,6 +776,23 @@ function closeDetail() {
 
 // ---------------------------------------------------------------- status bar
 
+// showRouterHint makes the empty table name the ports actually bound, which
+// the text in index.html can only guess at.
+function showRouterHint(st) {
+  const port = (addr) => escape(addr.slice(addr.lastIndexOf(':') + 1));
+  const hosts = [];
+  if (st.udpListen) {
+    hosts.push(`<code>logging host &lt;this machine&gt; transport udp port ${port(st.udpListen)}</code>`);
+  }
+  if (st.tlsListen) {
+    hosts.push(`<code>logging host &lt;this machine&gt; transport tls port ${port(st.tlsListen)} profile CUBE-LOGGER</code>`
+      + ' (<code>cube-logger cert</code> prints the certificate and profile steps)');
+  }
+  if (!hosts.length) return;
+  el.emptyHint.innerHTML = `Waiting for syslog. On the CUBE you need ${hosts.join(' or ')},`
+    + ' <code>logging trap debugging</code> and <code>service sequence-numbers</code>.';
+}
+
 function showStatus(st) {
   const s = st.store || {};
   const bits = [];
@@ -782,7 +800,18 @@ function showStatus(st) {
   if (st.allow && st.allow !== 'any') bits.push(`allow ${st.allow}`);
   bits.push(`${(s.records || 0).toLocaleString()} / ${(s.cap || 0).toLocaleString()} held`);
   if (s.evicted) bits.push(`${s.evicted.toLocaleString()} aged out of the ring`);
-  if (st.listener && st.listener.blocked) bits.push(`${st.listener.blocked} blocked`);
+  const blocked = (st.listener ? st.listener.blocked : 0) + (st.tls ? st.tls.blocked : 0);
+  if (blocked) bits.push(`${blocked.toLocaleString()} blocked`);
+  if (st.tls) {
+    const t = st.tls;
+    let c = `${t.active} TLS connection${t.active === 1 ? '' : 's'}`;
+    // A handshake that fails is a router that is configured but not
+    // receiving — or a scanner, on a port the internet can reach. The terminal
+    // says which, with what to change on the router.
+    if (t.handshakeFailures) c += `, ${t.handshakeFailures.toLocaleString()} failed handshake(s)`;
+    if (t.refused) c += `, ${t.refused.toLocaleString()} refused (too many open)`;
+    bits.push(c);
+  }
   if (st.calls) {
     state.hasIndex = true;
     let c = `${st.calls.calls.toLocaleString()} call(s)`;
@@ -791,6 +820,7 @@ function showStatus(st) {
     bits.push(c);
   }
   showCallsPane();
+  showRouterHint(st);
   el.statusStore.textContent = bits.join(' · ');
 
   const parts = [];

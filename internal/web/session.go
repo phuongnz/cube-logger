@@ -40,7 +40,7 @@ func (s *Server) serveSession(w http.ResponseWriter, r *http.Request) {
 	sw, err := session.NewWriter(w, session.Header{
 		Title:  s.Title,
 		Year:   year,
-		Listen: s.listenAddr(),
+		Listen: s.ListenAddr(),
 	}, session.Options{Gzip: gz})
 	if err != nil {
 		// Nothing has been written yet, so an error is still an error.
@@ -58,11 +58,18 @@ func (s *Server) serveSession(w http.ResponseWriter, r *http.Request) {
 	_ = sw.Close(s.status().Sources)
 }
 
-func (s *Server) listenAddr() string {
-	if s.Listener == nil {
-		return ""
+// ListenAddr is where syslog is received, as a person reads it: each address
+// with its transport, because a router has to be told both. It is empty when
+// the session was opened from files.
+func (s *Server) ListenAddr() string {
+	var parts []string
+	if s.Listener != nil {
+		parts = append(parts, s.Listener.Addr()+"/udp")
 	}
-	return s.Listener.Addr()
+	if s.TLS != nil {
+		parts = append(parts, s.TLS.Addr()+"/tls")
+	}
+	return strings.Join(parts, ", ")
 }
 
 // loadResult is what the browser is told about a file it opened.

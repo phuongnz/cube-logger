@@ -2,24 +2,37 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/phuongnz/cube-logger/internal/listen"
+	"github.com/phuongnz/cube-logger/internal/tlscert"
 )
 
 // replayCmd sends a saved log to a listener the way a CUBE would: one datagram
 // per line. That framing is the whole point. A tool that sent a whole SIP
 // message in one datagram would exercise nothing the reassembler does, and the
-// reassembler is where the hard parts of the live path live.
+// reassembler is where the hard parts of the live path live. Over TLS it is one
+// message per line, for the same reason.
 func replayCmd(args []string) error {
 	fs := flag.NewFlagSet("replay", flag.ExitOnError)
-	to := fs.String("to", fmt.Sprintf("127.0.0.1:%d", defaultReplayPort),
-		"UDP address to send to")
+	to := fs.String("to", "", fmt.Sprintf("address to send to (default 127.0.0.1:%d, or 127.0.0.1:%d with -tls)",
+		listen.DefaultPort, listen.DefaultTLSPort))
+	useTLS := fs.Bool("tls", false, "send over TLS, as a router with \"transport tls\" does, instead of UDP")
+	caFile := fs.String("tls-ca", "",
+		"the CA that issued the listener's certificate (default: the one cube-logger made, as \"cert\" prints)")
+	certFile := fs.String("tls-cert", "", "a certificate to present, for a listener started with -tls-client-ca")
+	keyFile := fs.String("tls-key", "", "the key for -tls-cert")
 	rate := fs.Float64("rate", 200, "lines per second (0 means as fast as the socket takes them)")
 	repeat := fs.Int("repeat", 1, "send the file this many times (0 means until interrupted)")
 	frame := fs.Bool("frame", true,
@@ -39,6 +52,18 @@ func replayCmd(args []string) error {
 	if *drop < 0 || *drop >= 1 {
 		return fmt.Errorf("-drop must be between 0 and 1")
 	}
+	if !*useTLS && (*caFile != "" || *certFile != "" || *keyFile != "") {
+		return fmt.Errorf("the -tls-… flags need -tls")
+	}
+	if (*certFile == "") != (*keyFile == "") {
+		return fmt.Errorf("-tls-cert and -tls-key go together")
+	}
+	if *to == "" {
+		*to = fmt.Sprintf("127.0.0.1:%d", listen.DefaultPort)
+		if *useTLS {
+			*to = fmt.Sprintf("127.0.0.1:%d", listen.DefaultTLSPort)
+		}
+	}
 
 	// Reading the file into memory keeps -repeat honest and keeps the send loop
 	// free of disk latency, which would otherwise show up as jitter in a load
@@ -51,14 +76,26 @@ func replayCmd(args []string) error {
 		return fmt.Errorf("%s is empty", fs.Arg(0))
 	}
 
-	conn, err := net.Dial("udp", *to)
-	if err != nil {
+	var conn net.Conn
+	unit := "datagram(s)"
+	if *useTLS {
+		config, err := replayTLS(*caFile, *certFile, *keyFile)
+		if err != nil {
+			return err
+		}
+		d := &net.Dialer{Timeout: 10 * time.Second}
+		if conn, err = tls.DialWithDialer(d, "tcp", *to, config); err != nil {
+			return tlsDialError(*to, err)
+		}
+		unit = "TLS message(s)"
+	} else if conn, err = net.Dial("udp", *to); err != nil {
 		return err
 	}
 	defer conn.Close()
 
 	r := &replayer{
 		conn:     conn,
+		octets:   *useTLS,
 		frame:    *frame,
 		facility: *facility,
 		seq:      *seq,
@@ -84,16 +121,16 @@ func replayCmd(args []string) error {
 			}
 		}
 		if *verbose {
-			fmt.Fprintf(os.Stderr, "pass %d: %d datagram(s) sent, %d dropped\n",
-				n+1, r.sent, r.dropped)
+			fmt.Fprintf(os.Stderr, "pass %d: %d %s sent, %d dropped\n",
+				n+1, r.sent, unit, r.dropped)
 		}
 	}
 	// Give the receiver its idle timeout before the process exits, so the last
 	// record is released rather than sitting half-assembled.
 	time.Sleep(time.Second)
 
-	fmt.Fprintf(os.Stderr, "replayed %d line(s) as %d datagram(s) to %s in %s",
-		r.sent+r.dropped, r.sent, *to, time.Since(start).Round(time.Millisecond))
+	fmt.Fprintf(os.Stderr, "replayed %d line(s) as %d %s to %s in %s",
+		r.sent+r.dropped, r.sent, unit, *to, time.Since(start).Round(time.Millisecond))
 	if r.dropped > 0 {
 		fmt.Fprintf(os.Stderr, ", %d dropped on purpose", r.dropped)
 	}
@@ -101,12 +138,68 @@ func replayCmd(args []string) error {
 	return nil
 }
 
-// defaultReplayPort mirrors listen.DefaultPort without importing it, so the
-// two stay in one place: see routerConfig in live.go.
-const defaultReplayPort = 5514
+// replayTLS is what replay offers a TLS listener: what the configuration
+// "cube-logger cert" prints asks a router for, TLS 1.2 and an ECDHE AES-GCM
+// suite. A replay that gets through is then some evidence that a router set up
+// that way will. The listener's certificate is checked the way a router checks
+// it, against a CA and for the address dialled.
+func replayTLS(caFile, certFile, keyFile string) (*tls.Config, error) {
+	if caFile == "" {
+		dir, err := tlscert.DefaultDir()
+		if err != nil {
+			return nil, err
+		}
+		caFile = filepath.Join(dir, tlscert.CAFile)
+		if _, err := os.Stat(caFile); errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("there is no %s yet: \"cube-logger cert\" makes it, "+
+				"or -tls-ca names the CA that issued the listener's certificate", caFile)
+		}
+	}
+	roots, err := tlscert.LoadPool(caFile)
+	if err != nil {
+		return nil, fmt.Errorf("-tls-ca: %w", err)
+	}
+	c := &tls.Config{
+		RootCAs:    roots,
+		MinVersion: tls.VersionTLS12,
+		MaxVersion: tls.VersionTLS12,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		},
+	}
+	if certFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, fmt.Errorf("-tls-cert: %w", err)
+		}
+		c.Certificates = []tls.Certificate{cert}
+	}
+	return c, nil
+}
+
+// tlsDialError says what to change for the two refusals a first try runs
+// into, which are also the two a router would hit.
+func tlsDialError(to string, err error) error {
+	var ua x509.UnknownAuthorityError
+	var he x509.HostnameError
+	switch {
+	case errors.As(err, &ua):
+		return fmt.Errorf("TLS to %s: the listener's certificate is not from the CA that -tls-ca names: %w", to, err)
+	case errors.As(err, &he):
+		return fmt.Errorf("TLS to %s: the listener's certificate does not name the address in -to; "+
+			"\"cube-logger cert\" lists the ones it does, and -tls-name adds one: %w", to, err)
+	}
+	return fmt.Errorf("TLS to %s: %w", to, err)
+}
 
 type replayer struct {
-	conn     net.Conn
+	conn net.Conn
+	// octets frames each message as RFC 5425 does, for a stream: a datagram
+	// needs no framing, and a stream is nothing without it.
+	octets   bool
 	frame    bool
 	facility int
 	seq      uint64
@@ -151,11 +244,20 @@ func (r *replayer) send(line string) error {
 }
 
 func (r *replayer) write(payload string) error {
+	if r.octets {
+		payload = octetFrame(payload)
+	}
 	if _, err := r.conn.Write([]byte(payload)); err != nil {
 		return err
 	}
 	r.sent++
 	return nil
+}
+
+// octetFrame is RFC 5425's framing, "LEN SP MSG". The message ends with the LF
+// that IOS-XE counts inside LEN, so the listener sees what a router sends.
+func octetFrame(payload string) string {
+	return strconv.Itoa(len(payload)+1) + " " + payload + "\n"
 }
 
 // next is a tiny deterministic generator: a replay that loses datagram 7 every

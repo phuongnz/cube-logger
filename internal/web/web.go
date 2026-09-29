@@ -65,8 +65,10 @@ type Server struct {
 	// when a saved file was loaded rather than a listener started.
 	Live *live.Reassembler
 	// Listener is consulted for socket statistics, and may be nil for the
-	// same reason.
+	// same reason, or because only TLS was asked for.
 	Listener *listen.Listener
+	// TLS is the syslog-over-TLS listener, when there is one.
+	TLS *listen.TLSListener
 	// Calls is the live call index. It may be nil, in which case the call
 	// list is simply absent: parsing records is useful on its own.
 	Calls *calls.Index
@@ -201,9 +203,15 @@ type status struct {
 	Store    store.Stats       `json:"store"`
 	Sources  []live.SourceStat `json:"sources"`
 	Listener *listen.Stats     `json:"listener,omitempty"`
+	TLS      *listen.TLSStats  `json:"tls,omitempty"`
 	Calls    *calls.Stats      `json:"calls,omitempty"`
-	Listen   string            `json:"listen,omitempty"`
-	Allow    string            `json:"allow,omitempty"`
+	// Listen is every input in one string, for a person to read; UDPListen
+	// and TLSListen are the same addresses one at a time, for the router
+	// configuration the empty table suggests.
+	Listen    string `json:"listen,omitempty"`
+	UDPListen string `json:"udpListen,omitempty"`
+	TLSListen string `json:"tlsListen,omitempty"`
+	Allow     string `json:"allow,omitempty"`
 }
 
 func (s *Server) status() status {
@@ -225,9 +233,17 @@ func (s *Server) status() status {
 	if s.Listener != nil {
 		ls := s.Listener.Stats()
 		st.Listener = &ls
-		st.Listen = s.Listener.Addr()
+		st.UDPListen = s.Listener.Addr()
 		st.Allow = s.Listener.Allowlist().String()
 	}
+	if s.TLS != nil {
+		ts := s.TLS.Stats()
+		st.TLS = &ts
+		st.TLSListen = s.TLS.Addr()
+		// Both inputs are given the same allowlist.
+		st.Allow = s.TLS.Allowlist().String()
+	}
+	st.Listen = s.ListenAddr()
 	return st
 }
 

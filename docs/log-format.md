@@ -425,6 +425,60 @@ anywhere, and no CRLF. Strip one optional trailing CR; never require it.
 4. A message is complete when the bytes after its blank line match its `Content-Length`. That is
    also the check that detects a message with lines missing in the middle.
 
+## The TLS path
+
+Written from Cisco's documentation and RFC 5425, **not from a capture**. Nobody has captured a
+CUBE sending syslog over TLS yet. So this section records what the listener assumes, and what it
+does when an assumption turns out wrong. Question 8 onwards lists what is unverified.
+
+**Framing.** RFC 5425 octet counting, `LEN SP MSG`, which is what IOS-XE is documented to send.
+Its LEN appears to count a trailing LF. The reader removes one trailing LF and any NUL padding,
+so what comes out is byte for byte what the same line would be as a UDP payload. It also accepts
+LF-terminated framing (RFC 6587's non-transparent framing), and it decides per message from the
+first byte: a digit starts a length, and `<` starts a priority. Any other first byte closes the
+connection, because there is then no way to find where the next message starts.
+
+**Messages are capped at 64 KiB.** RFC 5425 asks a receiver to take 2048 octets and suggests
+8192. The longest CUBE line ever seen is 453 bytes. The cap is generous because a message cut
+short is a corrupted line, and it exists because a stream from the internet can announce any
+length it likes.
+
+**The payload is taken to be the UDP payload.** That is `<PRI>seq: seq: timestamp: line`, one
+line per message. Everything after the socket is shared: the reassembler, both counters and the
+parser. The case for it is that the outer counter numbers every line, so it is assigned before
+any transport sees the message, and a transport cannot merge lines that already carry their own
+numbers. This is inference, not observation (question 8).
+
+**The source is the peer's address**, as it is for a datagram. A router moved from UDP to TLS
+keeps its name, its `-name` label and its sequence tracking. A router configured with both sends
+each line twice. The second copy is dropped as a duplicate or a late line, because the two
+copies carry the same outer counter.
+
+**`syslog-format rfc5424`** on `logging trap` replaces the IOS frame with an RFC 5424 header,
+and the timestamp and counters are then not where the parser looks for them. The TLS listener
+recognises `<PRI>1 ` at the start of a connection and prints the change to make on the router.
+
+**What TLS changes about gaps.** TCP neither loses nor reorders, so a gap in the outer counter
+on a TLS connection is always something the router did: rate limiting, an overrun, or lines
+dropped while the connection was down. That separates the two causes that question 2 says UDP
+cannot tell apart. Suppose that over TLS `show logging` reports rate-limited messages, but no
+gap ever appears. Then a rate-limited message does not consume a sequence number. The UI still
+says "lost or rate-limited", which stays true on both paths.
+
+**The handshake.** TLS 1.2 at least, and ECDHE only, so a recorded stream cannot be decrypted
+later with the server's key. Go implements no DHE and does not offer static-RSA key exchange by
+default. Of IOS-XE's `ciphersuite` keywords, that leaves `ecdhe-rsa-aes-gcm-sha2`, for the RSA
+certificate cube-logger makes, and `ecdhe-ecdsa-aes-gcm-sha2`, for an ECDSA certificate given
+with `-tls-cert`. TLS 1.3 needs no keyword, on a release that offers it. The listener also:
+
+- applies the allowlist before the handshake;
+- allows 10 seconds for the handshake;
+- keeps at most 32 connections open.
+
+When a handshake fails, the listener prints what the router's ClientHello offered next to the
+error. The first contact with a real router will therefore answer question 11 whether it
+succeeds or not.
+
 ## What a file adds in front of the line
 
 A CUBE line reaches a file by one of several routes, and each route puts its own framing in
@@ -477,7 +531,7 @@ into nineteen records. The times are then the server's, not the router's, and th
 
 Questions 1-3 of the first draft — packetisation, truncation and the frame layout — are closed
 by § The UDP path. What is left needs captures nobody has made yet, and none of it blocks the
-parser.
+parser. Questions 8 onwards are about § The TLS path and need a router configured for it.
 
 1. **Interleaving under concurrent calls.** In the UDP capture every line between two record
    heads belonged to the first record: records were emitted atomically. That was one call at low
@@ -512,6 +566,40 @@ parser.
    writing, and the fixtures under `testdata/files/` were written by hand to match. A real file
    from each would either confirm them or show a template option nobody thought of; the reader
    is built so that an unrecognised prefix costs a line, not a file.
+8. **One line per message over TLS?** The TLS path assumes IOS-XE sends each line as its own
+   message, as it sends each line as its own datagram. If it sends a whole record as one message
+   instead, the lines arrive with line breaks inside them, and the table shows a SIP message as
+   one run-on line. The fix would then be to split messages in the listener. Nothing is done
+   about it until a real stream shows it happening.
+9. **The exact bytes on the stream.** Does LEN count the trailing LF? Is there NUL padding, or
+   anything else between messages? The reader copes with all of these, so this does not block
+   anything. It is still worth confirming with the first real stream.
+10. **Does the router check the certificate's name?** And if it does, which field does it read:
+    the common name, an IP SAN or a DNS SAN? Nothing documents it. cube-logger puts the first
+    `-tls-name` in the common name and every address in the SANs, so either answer works.
+11. **Default version and suites.** Nobody knows what a tls-profile that names none of them
+    offers, or whether a router with no tls-profile offers anything Go accepts. That is why the
+    printed configuration names both `tls-version` and `ciphersuite`.
+12. **The trustpoint steps.** These are unverified:
+    - whether `chain-validation stop` is accepted on a self-signed root, and whether it is
+      needed at all;
+    - whether `crypto pki authenticate` takes the PEM with its BEGIN and END lines, or only the
+      base64 between them;
+    - how the router shows the fingerprints it asks about. cube-logger prints MD5 and SHA1 in
+      groups of eight upper-case hex digits, the way IOS prints them elsewhere.
+13. **Reconnection and buffering.** What does the router do when the connection drops? How soon
+    does it reconnect? Are lines logged while it was down queued and sent later, or lost? The
+    counters will show which: queued lines arrive late and in order, and lost ones leave a gap.
+    But nothing says how long a queue would be.
+14. **Router certificates for `-tls-client-ca`.** Go refuses a client certificate that has an
+    extended key usage without `clientAuth`. A certificate with no extended key usage at all is
+    accepted. Whether the certificates IOS-XE enrols carry one, and with what, is unknown.
+    `client-id-trustpoint` may need a certificate enrolled with that usage in mind.
+
+The first real TLS connection answers several of these at once. The terminal prints the
+negotiated version and suite when a router connects, and the ClientHello when it cannot. An
+Embedded Packet Capture cannot see inside TLS. Instead, compare `show logging` against what
+arrived, which answers question 8.
 
 ### How the UDP capture was taken
 
