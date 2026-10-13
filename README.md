@@ -7,8 +7,13 @@ each call can be viewed on its own, and each call has a SIP ladder diagram.
 It is modelled on the AudioCodes Syslog Viewer, which does the same for AudioCodes gateways and
 SBCs.
 
-> **Status: in progress.** The live view, the call list, the ladder diagram, saved files and
-> saved sessions work. See [docs/PLAN.md](docs/PLAN.md) for the roadmap.
+> **Status: in progress.** The live view, the call list, the ladder diagram, saved files,
+> saved sessions and syslog over TLS work. What is not yet built is in
+> [docs/design.md](docs/design.md#6-not-yet).
+
+## Run
+
+One binary, standard library only. Go 1.24 or later to build; nothing to install to run.
 
 ```
 go build ./cmd/cube-logger
@@ -17,6 +22,28 @@ go build ./cmd/cube-logger
 ./cube-logger live -tls :6514           # …and receives syslog over TLS too (see below)
 ./cube-logger open capture.txt          # a saved log or session, in the same views
 ```
+
+To test it: `./test.sh` runs gofmt, build, vet, the dependency check, `go test` with the race
+detector on the concurrent packages, and a syntax check of the UI when node is installed.
+
+## Layout
+
+- `cmd/cube-logger/` — the command: `live`, `open`, `parse`, `replay`, `sanitize`, `cert`
+- `internal/parse/`, `internal/correlate/` — the core, no I/O: text in, records and calls out
+- `internal/wire/`, `internal/listen/`, `internal/live/`, `internal/tlscert/` — the live path:
+  datagram decode, reassembly, the UDP and TLS listeners, the certificate authority
+- `internal/ingest/`, `internal/load/`, `internal/session/` — saved files and sessions
+- `internal/store/`, `internal/ws/`, `internal/web/` — the in-memory store, the WebSocket and
+  the embedded UI
+- `internal/sanitize/` — makes a raw capture safe to commit as a fixture
+- `testdata/` — sanitized fixtures; `deploy/` — the container for a server
+- `docs/` — the design and the log format
+
+## Read more
+
+- [docs/design.md](docs/design.md) — what it is for, how it is built, the decisions
+- [docs/log-format.md](docs/log-format.md) — the CUBE log and debug format, as captured
+- [LICENSE](./LICENSE) — MIT
 
 ## Features
 
